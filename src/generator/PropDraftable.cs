@@ -33,36 +33,39 @@ namespace Germinate.Generator
   {
     public const string PropPrefix = "__germinate_dprop__";
 
-    public static void InterfaceProps(RecordToDraft record, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    public static void Emit(EmitPhase phase, RecordToDraft record, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
     {
-      output.AppendLine($"  {propRecord.InterfaceName} {prop.PropertyName} {{get;}}");
-      output.AppendLine($"  {record.InterfaceName} SetAndDraft{prop.PropertyName}({prop.FullPropertyTypeName} value);");
-    }
+      switch (phase)
+      {
+        case EmitPhase.Interface:
+          output.AppendLine($"  {propRecord.InterfaceName} {prop.PropertyName} {{get;}}");
+          output.AppendLine($"  {record.InterfaceName} SetAndDraft{prop.PropertyName}({prop.FullPropertyTypeName} value);");
+          break;
 
-    public static void ImplementationProps(RecordToDraft record, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
-    {
-      output.AppendLine($"    private {propRecord.DraftName} {PropPrefix}{prop.PropertyName};");
-      output.AppendLine($"    public {propRecord.InterfaceName} {prop.PropertyName}");
-      output.AppendLine("    {");
-      output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
-      output.AppendLine("    }");
-      output.AppendLine($"    public {record.InterfaceName} SetAndDraft{prop.PropertyName}({propRecord.FullClassName} value)");
-      output.AppendLine("    {");
-      output.AppendLine($"      base.{DraftableGenerator.SetDirtyMethod}();");
-      output.AppendLine($"      {PropPrefix}{prop.PropertyName}.{DraftableGenerator.ClearParentMethod}();");
-      output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value, this);");
-      output.AppendLine("      return this;");
-      output.AppendLine("    }");
-    }
+        case EmitPhase.PropImplementation:
+          output.AppendLine($"    private {propRecord.DraftName} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    public {propRecord.InterfaceName} {prop.PropertyName}");
+          output.AppendLine("    {");
+          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine("    }");
+          output.AppendLine($"    public {record.InterfaceName} SetAndDraft{prop.PropertyName}({propRecord.FullClassName} value)");
+          output.AppendLine("    {");
+          output.AppendLine($"      base.{DraftableGenerator.SetDirtyMethod}();");
+          output.AppendLine($"      {PropPrefix}{prop.PropertyName}.{DraftableGenerator.ClearParentMethod}();");
+          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value, this);");
+          output.AppendLine("      return this;");
+          output.AppendLine("    }");
 
-    public static void ImplementationConstructor(RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
-    {
-      output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value.{prop.PropertyName}, this);");
-    }
+          break;
 
-    public static void Finish(RecordProperty prop, StringBuilder output)
-    {
-      output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.{DraftableGenerator.FinishMethod}(),");
+        case EmitPhase.Constructor:
+          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value.{prop.PropertyName}, this);");
+          break;
+
+        case EmitPhase.Finish:
+          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.{DraftableGenerator.FinishMethod}(),");
+          break;
+      }
     }
   }
 }

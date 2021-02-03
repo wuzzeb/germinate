@@ -81,13 +81,42 @@ namespace Germinate.Generator
         var output = new StringBuilder();
         output.AppendLine($"namespace {Namespace} {{");
 
-        EmitInterface(rds, output, records);
+        // Interface
+        output.AppendLine($"public interface {rds.InterfaceName} {{");
+        EmitProperties(EmitPhase.Interface, rds, output, records);
+        output.AppendLine("}"); // close interface
 
         output.AppendLine();
         output.AppendLine("public static partial class Producer {");
 
-        EmitImpl(rds, output, records);
+        output.AppendLine($"  private class {rds.DraftName} : DraftableBase, {rds.InterfaceName} {{");
 
+        EmitProperties(EmitPhase.PropImplementation, rds, output, records);
+
+        // constructor
+        output.AppendLine($"    private {rds.FullClassName} {OriginalProp};");
+        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
+        output.AppendLine("    {");
+        output.AppendLine($"      {OriginalProp} = value;");
+        EmitProperties(EmitPhase.Constructor, rds, output, records);
+        output.AppendLine("    }"); // close constructor
+
+        // finish
+        output.AppendLine($"    public {rds.FullClassName} {FinishMethod}()");
+        output.AppendLine("    {");
+        output.AppendLine($"      if (base.{IsDirtyProp})");
+        output.AppendLine("      {");
+        output.AppendLine($"        return new {rds.FullClassName}() {{");
+        EmitProperties(EmitPhase.Finish, rds, output, records);
+        output.AppendLine("        };"); // close initializer
+        output.AppendLine("      } else {");
+        output.AppendLine($"        return {OriginalProp};");
+        output.AppendLine("      }"); // close else
+        output.AppendLine("    }"); // close finish method
+
+        output.AppendLine("  }"); // close class
+
+        // Producer
         output.AppendLine($"  public static {rds.FullClassName} Produce(this {rds.FullClassName} value, System.Action<{rds.InterfaceName}> f)");
         output.AppendLine("  {");
         output.AppendLine($"    var draft = new {rds.DraftName}(value, null);");
@@ -103,21 +132,19 @@ namespace Germinate.Generator
       }
     }
 
-    private void EmitInterface(RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
+    private void EmitProperties(EmitPhase phase, RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
     {
-      output.AppendLine($"public interface {rds.InterfaceName} {{");
-
       foreach (var prop in rds.Properties)
       {
         if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
         {
-          PropDraftable.InterfaceProps(rds, prop, propRecord, output);
+          PropDraftable.Emit(phase, rds, prop, propRecord, output);
         }
         else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
         {
           if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
           {
-            PropListOfDraftable.InterfaceProps(prop, elementRecord, output);
+            PropListOfDraftable.Emit(phase, prop, elementRecord, output);
           }
           else
           {
@@ -126,105 +153,9 @@ namespace Germinate.Generator
         }
         else
         {
-          PropNonDraftable.InterfaceProps(prop, output);
+          PropNonDraftable.Emit(phase, prop, output);
         }
       }
-
-      output.AppendLine("}"); // close interface
-    }
-
-    private void EmitImpl(RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
-    {
-      output.AppendLine($"  private class {rds.DraftName} : DraftableBase, {rds.InterfaceName} {{");
-
-      // properties
-      foreach (var prop in rds.Properties)
-      {
-        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
-        {
-          PropDraftable.ImplementationProps(rds, prop, propRecord, output);
-        }
-        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
-        {
-          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
-          {
-            PropListOfDraftable.ImplementationProps(prop, elementRecord, output);
-          }
-          else
-          {
-            // TODO: prim list
-          }
-        }
-        else
-        {
-          PropNonDraftable.ImplementationProps(prop, output);
-        }
-      }
-
-      // constructor
-      output.AppendLine($"    private {rds.FullClassName} {OriginalProp};");
-      output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
-      output.AppendLine("    {");
-      output.AppendLine($"      {OriginalProp} = value;");
-      foreach (var prop in rds.Properties)
-      {
-        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
-        {
-          PropDraftable.ImplementationConstructor(prop, propRecord, output);
-        }
-        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
-        {
-          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
-          {
-            PropListOfDraftable.ImplementationConstructor(prop, elementRecord, output);
-          }
-          else
-          {
-            // TODO: prim list
-          }
-        }
-        else
-        {
-          PropNonDraftable.ImplementationConstructor(prop, output);
-        }
-      }
-      output.AppendLine("    }"); // close constructor
-
-      // finish
-      output.AppendLine($"    public {rds.FullClassName} {FinishMethod}()");
-      output.AppendLine("    {");
-      output.AppendLine($"      if (base.{IsDirtyProp})");
-      output.AppendLine("      {");
-      output.AppendLine($"        return new {rds.FullClassName}() {{");
-      foreach (var prop in rds.Properties)
-      {
-        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var _propRecord))
-        {
-          PropDraftable.Finish(prop, output);
-        }
-        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
-        {
-          if (allRecords.TryGetValue(prop.TypeArguments[0], out var _elementRecord))
-          {
-            PropListOfDraftable.Finish(prop, output);
-          }
-          else
-          {
-            // TODO: prim list
-          }
-        }
-        else
-        {
-          PropNonDraftable.Finish(prop, output);
-        }
-      }
-      output.AppendLine("        };"); // close initializer
-      output.AppendLine("      } else {"); // close if
-      output.AppendLine($"        return {OriginalProp};");
-      output.AppendLine("      }"); // close else
-      output.AppendLine("    }"); // close finish method
-
-      output.AppendLine("  }"); // close class
     }
 
     private string DraftableBase()

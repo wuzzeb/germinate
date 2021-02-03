@@ -33,34 +33,37 @@ namespace Germinate.Generator
   {
     public const string PropPrefix = "__germinate_prop__";
 
-    public static void InterfaceProps(RecordProperty prop, StringBuilder output)
+    public static void Emit(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
-      output.AppendLine($"  {prop.PropertyType.ToDisplayString()} {prop.PropertyName} {{get; set;}}");
-    }
+      switch (phase)
+      {
+        case EmitPhase.Interface:
+          output.AppendLine($"  {prop.PropertyType.ToDisplayString()} {prop.PropertyName} {{get; set;}}");
+          break;
 
-    public static void ImplementationProps(RecordProperty prop, StringBuilder output)
-    {
-      var typeName = prop.PropertyType.ToDisplayString();
-      output.AppendLine($"    private {typeName} {PropPrefix}{prop.PropertyName};");
-      output.AppendLine($"    public {typeName} {prop.PropertyName}");
-      output.AppendLine("    {");
-      output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
-      output.AppendLine("      set");
-      output.AppendLine("      {");
-      output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod}();");
-      output.AppendLine($"        {PropPrefix}{prop.PropertyName} = value;");
-      output.AppendLine("      }");
-      output.AppendLine("    }");
-    }
+        case EmitPhase.PropImplementation:
+          var typeName = prop.PropertyType.ToDisplayString();
+          output.AppendLine($"    private {typeName} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    public {typeName} {prop.PropertyName}");
+          output.AppendLine("    {");
+          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine("      set");
+          output.AppendLine("      {");
+          output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod}();");
+          output.AppendLine($"        {PropPrefix}{prop.PropertyName} = value;");
+          output.AppendLine("      }");
+          output.AppendLine("    }");
+          break;
 
-    public static void ImplementationConstructor(RecordProperty prop, StringBuilder output)
-    {
-      output.AppendLine($"      {PropPrefix}{prop.PropertyName} = value.{prop.PropertyName};");
-    }
+        case EmitPhase.Constructor:
+          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = value.{prop.PropertyName};");
+          break;
 
-    public static void Finish(RecordProperty prop, StringBuilder output)
-    {
-      output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName},");
+        case EmitPhase.Finish:
+          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName},");
+          break;
+
+      }
     }
   }
 }

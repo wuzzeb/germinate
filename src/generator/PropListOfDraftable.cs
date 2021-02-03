@@ -43,34 +43,37 @@ namespace Germinate.Generator
       return $"Germinate.Collections.IListOfDraft<{elementRecord.FullClassName}, {elementRecord.InterfaceName}>";
     }
 
-    public static void InterfaceProps(RecordProperty prop, RecordToDraft elementRecord, StringBuilder output)
+    public static void Emit(EmitPhase phase, RecordProperty prop, RecordToDraft elementRecord, StringBuilder output)
     {
-      output.AppendLine($"  {InterfaceType(elementRecord)} {prop.PropertyName} {{get;}}");
+      switch (phase)
+      {
+        case EmitPhase.Interface:
+          output.AppendLine($"  {InterfaceType(elementRecord)} {prop.PropertyName} {{get;}}");
+          break;
+
+        case EmitPhase.PropImplementation:
+          output.AppendLine($"    private {ListType(elementRecord)} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    public {InterfaceType(elementRecord)} {prop.PropertyName}");
+          output.AppendLine("    {");
+          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine("    }");
+          break;
+
+        case EmitPhase.Constructor:
+          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {ListType(elementRecord)}(");
+          output.AppendLine($"        value.{prop.PropertyName},");
+          output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod},");
+          output.AppendLine($"        (x, s) => new {elementRecord.DraftName}(x, null, s),");
+          output.AppendLine($"        d => d.{DraftableGenerator.ClearParentMethod}(),");
+          output.AppendLine($"        d => d.{DraftableGenerator.FinishMethod}()");
+          output.AppendLine($"      );");
+          break;
+
+        case EmitPhase.Finish:
+          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.Finish(),");
+          break;
+      }
     }
 
-    public static void ImplementationProps(RecordProperty prop, RecordToDraft elementRecord, StringBuilder output)
-    {
-      output.AppendLine($"    private {ListType(elementRecord)} {PropPrefix}{prop.PropertyName};");
-      output.AppendLine($"    public {InterfaceType(elementRecord)} {prop.PropertyName}");
-      output.AppendLine("    {");
-      output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
-      output.AppendLine("    }");
-    }
-
-    public static void ImplementationConstructor(RecordProperty prop, RecordToDraft elementRecord, StringBuilder output)
-    {
-      output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {ListType(elementRecord)}(");
-      output.AppendLine($"        value.{prop.PropertyName},");
-      output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod},");
-      output.AppendLine($"        (x, s) => new {elementRecord.DraftName}(x, null, s),");
-      output.AppendLine($"        d => d.{DraftableGenerator.ClearParentMethod}(),");
-      output.AppendLine($"        d => d.{DraftableGenerator.FinishMethod}()");
-      output.AppendLine($"      );");
-    }
-
-    public static void Finish(RecordProperty prop, StringBuilder output)
-    {
-      output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.Finish(),");
-    }
   }
 }
