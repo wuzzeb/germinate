@@ -35,7 +35,6 @@ namespace Germinate.Generator
   public class DraftableGenerator : ISourceGenerator
   {
     public const string Namespace = "Germinate";
-    public const string PropPrefix = "__germinate_prop__";
     public const string FinishMethod = "__germinate_finish";
     public const string OriginalProp = "__germinate_original";
 
@@ -65,34 +64,30 @@ namespace Germinate.Generator
 
       context.AddSource("DraftableBase.cs", DraftableBase());
 
-      foreach (var rds in attrReceiver.Records)
+      var records = BuildRecords.RecordsToDraft(context.Compilation, attrReceiver.Records);
+
+      foreach (var rds in records.Values)
       {
-        var className = rds.Identifier.ToString();
-        var draftName = className + "Draft";
-        var interfaceName = "I" + className + "Draft";
-
-        var model = context.Compilation.GetSemanticModel(rds.SyntaxTree);
-        var classSymbol = model.GetDeclaredSymbol(rds);
-        var fullClassName = classSymbol.ToDisplayString();
-
+        /*
         foreach (var a in classSymbol.GetAttributes())
         {
           log.WriteLine(a.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
         }
+        */
 
         var output = new StringBuilder();
         output.AppendLine($"namespace {Namespace} {{");
 
-        EmitInterface(rds, model, output, interfaceName);
+        EmitInterface(rds, output, records);
 
         output.AppendLine();
         output.AppendLine("public static partial class Producer {");
 
-        EmitImpl(rds, model, output, fullClassName, interfaceName, draftName);
+        EmitImpl(rds, output, records);
 
-        output.AppendLine($"  public static {fullClassName} Produce(this {fullClassName} value, System.Action<{interfaceName}> f)");
+        output.AppendLine($"  public static {rds.FullClassName} Produce(this {rds.FullClassName} value, System.Action<{rds.InterfaceName}> f)");
         output.AppendLine("  {");
-        output.AppendLine($"    var draft = new {draftName}(value, null);");
+        output.AppendLine($"    var draft = new {rds.DraftName}(value, null);");
         output.AppendLine("    f(draft);");
         output.AppendLine($"    return draft.{FinishMethod}();");
         output.AppendLine("  }");
@@ -101,83 +96,85 @@ namespace Germinate.Generator
 
         log.WriteLine(output.ToString());
         log.WriteLine("-------------------------------");
-        context.AddSource(className + ".Draftable.cs", output.ToString());
+        context.AddSource(rds.ClassName + ".Draftable.cs", output.ToString());
       }
     }
 
-    private void EmitInterface(RecordDeclarationSyntax rds, SemanticModel model, StringBuilder output, string interfaceName)
+    private void EmitInterface(RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
     {
-      output.AppendLine($"public interface {interfaceName} {{");
+      output.AppendLine($"public interface {rds.InterfaceName} {{");
 
-      foreach (var member in rds.Members)
+      foreach (var prop in rds.Properties)
       {
-        if (member is PropertyDeclarationSyntax p)
+        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
         {
-          var name = p.Identifier.ToString();
-          var type = model.GetSymbolInfo(p.Type).Symbol as INamedTypeSymbol;
-          output.AppendLine($"  {type.ToDisplayString()} {name} {{get; set;}}");
+          PropDraftable.InterfaceProps(rds, prop, propRecord, output);
+        }
+        else
+        {
+          PropNonDraftable.InterfaceProps(prop, output);
         }
       }
 
       output.AppendLine("}"); // close interface
     }
 
-    private void EmitImpl(RecordDeclarationSyntax rds, SemanticModel model, StringBuilder output, string fullClassName, string interfaceName, string draftName)
+    private void EmitImpl(RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
     {
-      output.AppendLine($"  private class {draftName} : DraftableBase, {interfaceName} {{");
+      output.AppendLine($"  private class {rds.DraftName} : DraftableBase, {rds.InterfaceName} {{");
 
-      foreach (var member in rds.Members)
+      // properties
+      foreach (var prop in rds.Properties)
       {
-        if (member is PropertyDeclarationSyntax p)
+        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
         {
-          var name = p.Identifier.ToString();
-          var type = model.GetSymbolInfo(p.Type).Symbol as INamedTypeSymbol;
-          var typeName = type.ToDisplayString();
-          output.AppendLine($"    private {typeName} {PropPrefix}{name};");
-          output.AppendLine($"    public {typeName} {name}");
-          output.AppendLine("    {");
-          output.AppendLine($"      get => {PropPrefix}{name};");
-          output.AppendLine("      set");
-          output.AppendLine("      {");
-          output.AppendLine("        base.SetDirty();");
-          output.AppendLine($"        {PropPrefix}{name} = value;");
-          output.AppendLine("      }");
-          output.AppendLine("    }");
+          PropDraftable.ImplementationProps(rds, prop, propRecord, output);
+        }
+        else
+        {
+          PropNonDraftable.ImplementationProps(prop, output);
         }
       }
 
       // constructor
-      output.AppendLine($"    private {fullClassName} {OriginalProp};");
-      output.AppendLine($"    public {draftName}({fullClassName} value, DraftableBase parent) : base(parent)");
+      output.AppendLine($"    private {rds.FullClassName} {OriginalProp};");
+      output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent) : base(parent)");
       output.AppendLine("    {");
       output.AppendLine($"      {OriginalProp} = value;");
-      foreach (var member in rds.Members)
+      foreach (var prop in rds.Properties)
       {
-        if (member is PropertyDeclarationSyntax p)
+        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
         {
-          var name = p.Identifier.ToString();
-          output.AppendLine($"      {PropPrefix}{name} = value.{name};");
+          PropDraftable.ImplementationConstructor(prop, propRecord, output);
+        }
+        else
+        {
+          PropNonDraftable.ImplementationConstructor(prop, output);
         }
       }
       output.AppendLine("    }"); // close constructor
 
-      // finalize
-      output.AppendLine($"    public {fullClassName} {FinishMethod}()");
+      // finish
+      output.AppendLine($"    public {rds.FullClassName} {FinishMethod}()");
       output.AppendLine("    {");
       output.AppendLine("      if (base.IsDirty)");
       output.AppendLine("      {");
-      output.AppendLine($"        return new {fullClassName}() {{");
-      foreach (var member in rds.Members)
+      output.AppendLine($"        return new {rds.FullClassName}() {{");
+      foreach (var prop in rds.Properties)
       {
-        if (member is PropertyDeclarationSyntax p)
+        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var _propRecord))
         {
-          var name = p.Identifier.ToString();
-          output.AppendLine($"          {name} = this.{PropPrefix}{name},");
+          PropDraftable.Finish(prop, output);
+        }
+        else
+        {
+          PropNonDraftable.Finish(prop, output);
         }
       }
       output.AppendLine("        };"); // close initializer
       output.AppendLine("      } else {"); // close if
-      output.AppendLine($"        return {OriginalProp}; }}");
+      output.AppendLine($"        return {OriginalProp};");
+      output.AppendLine("      }"); // close else
       output.AppendLine("    }"); // close finish method
 
       output.AppendLine("  }"); // close class
