@@ -37,6 +37,9 @@ namespace Germinate.Generator
     public const string Namespace = "Germinate";
     public const string FinishMethod = "__germinate_finish";
     public const string OriginalProp = "__germinate_original";
+    public const string IsDirtyProp = "__germinate_isDirty";
+    public const string SetDirtyMethod = "__germinate_setDirty";
+    public const string ClearParentMethod = "__germinate_clearParent";
 
     private class AttrSyntaxReceiver : ISyntaxReceiver
     {
@@ -110,6 +113,17 @@ namespace Germinate.Generator
         {
           PropDraftable.InterfaceProps(rds, prop, propRecord, output);
         }
+        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
+        {
+          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
+          {
+            PropListOfDraftable.InterfaceProps(prop, elementRecord, output);
+          }
+          else
+          {
+            // TODO: prim list
+          }
+        }
         else
         {
           PropNonDraftable.InterfaceProps(prop, output);
@@ -130,6 +144,17 @@ namespace Germinate.Generator
         {
           PropDraftable.ImplementationProps(rds, prop, propRecord, output);
         }
+        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
+        {
+          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
+          {
+            PropListOfDraftable.ImplementationProps(prop, elementRecord, output);
+          }
+          else
+          {
+            // TODO: prim list
+          }
+        }
         else
         {
           PropNonDraftable.ImplementationProps(prop, output);
@@ -138,7 +163,7 @@ namespace Germinate.Generator
 
       // constructor
       output.AppendLine($"    private {rds.FullClassName} {OriginalProp};");
-      output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent) : base(parent)");
+      output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
       output.AppendLine("    {");
       output.AppendLine($"      {OriginalProp} = value;");
       foreach (var prop in rds.Properties)
@@ -146,6 +171,17 @@ namespace Germinate.Generator
         if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
         {
           PropDraftable.ImplementationConstructor(prop, propRecord, output);
+        }
+        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
+        {
+          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
+          {
+            PropListOfDraftable.ImplementationConstructor(prop, elementRecord, output);
+          }
+          else
+          {
+            // TODO: prim list
+          }
         }
         else
         {
@@ -157,7 +193,7 @@ namespace Germinate.Generator
       // finish
       output.AppendLine($"    public {rds.FullClassName} {FinishMethod}()");
       output.AppendLine("    {");
-      output.AppendLine("      if (base.IsDirty)");
+      output.AppendLine($"      if (base.{IsDirtyProp})");
       output.AppendLine("      {");
       output.AppendLine($"        return new {rds.FullClassName}() {{");
       foreach (var prop in rds.Properties)
@@ -165,6 +201,17 @@ namespace Germinate.Generator
         if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var _propRecord))
         {
           PropDraftable.Finish(prop, output);
+        }
+        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
+        {
+          if (allRecords.TryGetValue(prop.TypeArguments[0], out var _elementRecord))
+          {
+            PropListOfDraftable.Finish(prop, output);
+          }
+          else
+          {
+            // TODO: prim list
+          }
         }
         else
         {
@@ -182,57 +229,45 @@ namespace Germinate.Generator
 
     private string DraftableBase()
     {
-      return "namespace " + Namespace + @"{
+      return $@"namespace {Namespace} {{
 [System.AttributeUsage(System.AttributeTargets.Class)]
-public class DraftableAttribute : System.Attribute { }
+public class DraftableAttribute : System.Attribute {{ }}
 
-public static partial class Producer {
+public static partial class Producer {{
   private abstract class DraftableBase
-  {
+  {{
     private DraftableBase _parent;
     private System.Action _setParentDirty;
     private bool _dirty = false;
-    protected bool IsDirty => _dirty;
+    protected bool {IsDirtyProp} => _dirty;
 
-    protected void SetDirty()
-    {
+    protected void {SetDirtyMethod}()
+    {{
       DraftableBase b = this;
       while (b != null)
-      {
+      {{
         b._dirty = true;
         if (b._setParentDirty != null)
-        {
+        {{
           b._setParentDirty();
-        }
+        }}
         b = b._parent;
-      }
-    }
+      }}
+    }}
 
-    public void SetParent(DraftableBase p)
-    {
-      _parent = p;
-      _setParentDirty = null;
-    }
-
-    public void SetParent(System.Action setParentDirty)
-    {
+    public void {ClearParentMethod}()
+    {{
       _parent = null;
-      _setParentDirty = setParentDirty;
-    }
+      _setParentDirty = null;
+    }}
 
-    protected DraftableBase(DraftableBase parent)
-    {
+    protected DraftableBase(DraftableBase parent, System.Action setParentDirty)
+    {{
       _parent = parent;
-      _setParentDirty = null;
-    }
-
-    protected DraftableBase(System.Action setParentDirty)
-    {
-      _parent = null;
       _setParentDirty = setParentDirty;
-    }
-  }
-}}";
+    }}
+  }}
+}}}}";
     }
   }
 }

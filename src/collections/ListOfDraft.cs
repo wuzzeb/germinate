@@ -67,7 +67,7 @@ namespace Germinate.Collections
       }
     }
 
-    public IReadOnlyList<T> Finalize()
+    public IReadOnlyList<T> Finish()
     {
       if (base.IsDirty)
       {

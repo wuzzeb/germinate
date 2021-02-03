@@ -36,6 +36,7 @@ namespace Germinate.Generator
     public string PropertyName { get; init; }
     public INamedTypeSymbol PropertyType { get; init; }
     public string FullPropertyTypeName { get; init; }
+    public IReadOnlyList<string> TypeArguments { get; init; }
   }
 
 
@@ -76,6 +77,7 @@ namespace Germinate.Generator
                 PropertyName = p.Identifier.ToString(),
                 PropertyType = propType,
                 FullPropertyTypeName = propType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TypeArguments = propType.TypeArguments.Select(a => a.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).ToList()
               };
             })
             .ToList(),

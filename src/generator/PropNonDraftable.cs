@@ -47,7 +47,7 @@ namespace Germinate.Generator
       output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
       output.AppendLine("      set");
       output.AppendLine("      {");
-      output.AppendLine("        base.SetDirty();");
+      output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod}();");
       output.AppendLine($"        {PropPrefix}{prop.PropertyName} = value;");
       output.AppendLine("      }");
       output.AppendLine("    }");
