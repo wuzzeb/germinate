@@ -10,6 +10,7 @@ namespace Germinate.Tests
   {
     public int MyInt { get; init; }
     public float MyFloat { get; init; }
+    public IReadOnlyList<string> StrLst { get; init; }
   }
 
   [Draftable]
@@ -28,13 +29,20 @@ namespace Germinate.Tests
       {
         MyInt = 212,
         MyFloat = 244.2f,
+        StrLst = new[] { "aa", "bb" },
       };
 
       Console.WriteLine(f.ToString());
-      Console.WriteLine(f.Produce(fd =>
+      Console.WriteLine(string.Join(",", f.StrLst));
+
+      var f2 = f.Produce(fd =>
       {
         fd.MyInt = 111;
-      }).ToString());
+        fd.StrLst[1] = "cc";
+      });
+
+      Console.WriteLine(f2.ToString());
+      Console.WriteLine(string.Join(",", f2.StrLst));
 
       var b = new Bar()
       {

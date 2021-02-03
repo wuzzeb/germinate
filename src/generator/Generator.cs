@@ -148,7 +148,7 @@ namespace Germinate.Generator
           }
           else
           {
-            // TODO: prim list
+            PropListOfPrim.Emit(phase, prop, output);
           }
         }
         else

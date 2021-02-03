@@ -44,7 +44,7 @@ namespace Germinate.Collections
       _copy = new List<T>(_original);
     }
 
-    public IReadOnlyList<T> Finalize()
+    public IReadOnlyList<T> Finish()
     {
       if (base.IsDirty)
       {
