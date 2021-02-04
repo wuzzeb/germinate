@@ -88,7 +88,7 @@ namespace Germinate.Generator
 
         // constructor
         output.AppendLine($"    private readonly {rds.FullClassName} {Names.OriginalProp};");
-        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase} parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
+        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase} parent, {Names.CheckDirtyStruct}? checkDirty = null) : base(parent, checkDirty)");
         output.AppendLine("    {");
         output.AppendLine($"      {Names.OriginalProp} = value;");
         EmitProperties(EmitPhase.Constructor, rds, output, records);
@@ -112,8 +112,10 @@ namespace Germinate.Generator
         // Producer
         output.AppendLine($"  public static {rds.FullClassName} Produce(this {rds.FullClassName} value, System.Action<{rds.InterfaceName}> f)");
         output.AppendLine("  {");
-        output.AppendLine($"    var draft = new {rds.DraftName}(value, null);");
+        output.AppendLine($"    var check = new {Names.CheckDirtyStruct}() {{ Checks = new System.Collections.Generic.List<System.Action>() }};");
+        output.AppendLine($"    var draft = new {rds.DraftName}(value, null, check);");
         output.AppendLine("    f(draft);");
+        output.AppendLine("    foreach (var a in check.Checks) a();");
         output.AppendLine($"    return draft.{Names.FinishMethod}();");
         output.AppendLine("  }");
 
@@ -125,6 +127,18 @@ namespace Germinate.Generator
       }
     }
 
+    private static IReadOnlyList<string> _immutableCollections =
+      new[] {
+        "global::System.Collections.Immutable.ImmutableArray",
+        "global::System.Collections.Immutable.ImmutableDictionary",
+        "global::System.Collections.Immutable.ImmutableHashSet",
+        "global::System.Collections.Immutable.ImmutableList",
+        "global::System.Collections.Immutable.ImmutableQueue",
+        "global::System.Collections.Immutable.ImmutableSortedDictionary",
+        "global::System.Collections.Immutable.ImmutableSortedSet",
+        "global::System.Collections.Immutable.ImmutableStack"
+      };
+
     private void EmitProperties(EmitPhase phase, RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
     {
       foreach (var prop in rds.Properties)
@@ -133,16 +147,9 @@ namespace Germinate.Generator
         {
           PropDraftable.Emit(phase, rds, prop, propRecord, output);
         }
-        else if (prop.FullPropertyTypeName.StartsWith("global::System.Collections.Generic.IReadOnlyList"))
+        else if (_immutableCollections.Any(t => prop.FullPropertyTypeName.StartsWith(t)))
         {
-          if (allRecords.TryGetValue(prop.TypeArguments[0], out var elementRecord))
-          {
-            PropListOfDraftable.Emit(phase, prop, elementRecord, output);
-          }
-          else
-          {
-            PropListOfPrim.Emit(phase, prop, output);
-          }
+          PropImmutableCollection.Emit(phase, prop, output);
         }
         else
         {
@@ -158,11 +165,18 @@ namespace Germinate.Generator
 public class DraftableAttribute : System.Attribute {{ }}
 
 public static partial class Producer {{
+  private struct {Names.CheckDirtyStruct}
+  {{
+    public System.Collections.Generic.List<System.Action> Checks;
+  }}
+
+
   private abstract class {Names.DraftableBase}
   {{
     private {Names.DraftableBase} _parent;
-    private System.Action _setParentDirty;
+    private {Names.CheckDirtyStruct} _checkDirty;
     private bool _dirty = false;
+
     protected bool {Names.IsDirtyProp} => _dirty;
 
     protected void {Names.SetDirtyMethod}()
@@ -171,24 +185,19 @@ public static partial class Producer {{
       while (b != null)
       {{
         b._dirty = true;
-        if (b._setParentDirty != null)
-        {{
-          b._setParentDirty();
-        }}
         b = b._parent;
       }}
     }}
 
-    public void {Names.ClearParentMethod}()
+    protected void {Names.AddCheckDirtyMethod}(System.Action a)
     {{
-      _parent = null;
-      _setParentDirty = null;
+      _checkDirty.Checks.Add(a);
     }}
 
-    protected {Names.DraftableBase}({Names.DraftableBase} parent, System.Action setParentDirty)
+    protected {Names.DraftableBase}({Names.DraftableBase} parent, {Names.CheckDirtyStruct}? checkDirty)
     {{
       _parent = parent;
-      _setParentDirty = setParentDirty;
+      _checkDirty = parent == null ? checkDirty.Value : parent._checkDirty;
     }}
   }}
 }}}}";

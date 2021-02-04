@@ -50,7 +50,6 @@ namespace Germinate.Generator
           output.AppendLine($"    public {record.InterfaceName} SetAndDraft{prop.PropertyName}({propRecord.FullClassName} value)");
           output.AppendLine("    {");
           output.AppendLine($"      base.{Names.SetDirtyMethod}();");
-          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName}.{Names.ClearParentMethod}();");
           output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value, this);");
           output.AppendLine("      return this;");
           output.AppendLine("    }");

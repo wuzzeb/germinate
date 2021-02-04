@@ -62,7 +62,7 @@ namespace Germinate.Generator
           output.AppendLine($"        value.{prop.PropertyName},");
           output.AppendLine($"        base.{Names.SetDirtyMethod},");
           output.AppendLine($"        (x, s) => new {elementRecord.DraftName}(x, null, s),");
-          output.AppendLine($"        d => d.{Names.ClearParentMethod}(),");
+          output.AppendLine($"        d => d.ClearParent(),");
           output.AppendLine($"        d => d.{Names.FinishMethod}()");
           output.AppendLine($"      );");
           break;

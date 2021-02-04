@@ -30,12 +30,13 @@ namespace Germinate.Generator
 
     public const string DraftableBase = "__germinate_DraftableBase";
     public const string DraftClassPrefix = "__germinate_Draft__";
+    public const string CheckDirtyStruct = "__germinate_CheckDirty";
 
     public const string FinishMethod = "__germinate_finish";
     public const string OriginalProp = "__germinate_original";
     public const string IsDirtyProp = "__germinate_isDirty";
     public const string SetDirtyMethod = "__germinate_setDirty";
-    public const string ClearParentMethod = "__germinate_clearParent";
+    public const string AddCheckDirtyMethod = "__germinate_addCheckDirty";
     public const string PropPrefix = "__germinate_prop__";
   }
 }
