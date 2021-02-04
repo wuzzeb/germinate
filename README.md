@@ -45,18 +45,20 @@ public static class Program
         Wind = "High",
       }
     };
-
-    var chicagoTomorrow = chicago.Produce(draft =>
-    {
+    
+    // The following Produce function is created by Germinate
+    var chicagoTomorrow = chicago.Produce(draft => {
       draft.Weather.TemperatureC = 6;
       draft.Weather.PressureMB = 1020.5;
     });
 
     Console.WriteLine(chicago.ToString());
-    // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6, Weather = Weather { TemperatureC = 10, PressureMB = 1023.4, Wind = "High" } }
+    // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6,
+    //           Weather = Weather { TemperatureC = 10, PressureMB = 1023.4, Wind = "High" } }
 
     Console.WriteLine(chicagoTomorrow.ToString());
-    // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6, Weather = Weather { TemperatureC = 6, PressureMB = 1020.5, Wind = "High" } }
+    // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6,
+    //           Weather = Weather { TemperatureC = 6, PressureMB = 1020.5, Wind = "High" } }
   }
 }
 ```
