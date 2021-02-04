@@ -31,8 +31,6 @@ namespace Germinate.Generator
 {
   public static class PropListOfDraftable
   {
-    public const string PropPrefix = "__germinate_ldprop__";
-
     private static string ListType(RecordToDraft elementRecord)
     {
       return $"Germinate.Collections.ListOfDraft<{elementRecord.FullClassName}, {elementRecord.DraftName}, {elementRecord.InterfaceName}>";
@@ -52,25 +50,25 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {ListType(elementRecord)} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    private {ListType(elementRecord)} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {InterfaceType(elementRecord)} {prop.PropertyName}");
           output.AppendLine("    {");
-          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"      get => {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine("    }");
           break;
 
         case EmitPhase.Constructor:
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {ListType(elementRecord)}(");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = new {ListType(elementRecord)}(");
           output.AppendLine($"        value.{prop.PropertyName},");
-          output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod},");
+          output.AppendLine($"        base.{Names.SetDirtyMethod},");
           output.AppendLine($"        (x, s) => new {elementRecord.DraftName}(x, null, s),");
-          output.AppendLine($"        d => d.{DraftableGenerator.ClearParentMethod}(),");
-          output.AppendLine($"        d => d.{DraftableGenerator.FinishMethod}()");
+          output.AppendLine($"        d => d.{Names.ClearParentMethod}(),");
+          output.AppendLine($"        d => d.{Names.FinishMethod}()");
           output.AppendLine($"      );");
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.Finish(),");
+          output.AppendLine($"          {prop.PropertyName} = this.{Names.PropPrefix}{prop.PropertyName}.Finish(),");
           break;
       }
     }

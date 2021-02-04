@@ -31,8 +31,6 @@ namespace Germinate.Generator
 {
   public static class PropNonDraftable
   {
-    public const string PropPrefix = "__germinate_prop__";
-
     public static void Emit(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
       switch (phase)
@@ -43,24 +41,24 @@ namespace Germinate.Generator
 
         case EmitPhase.PropImplementation:
           var typeName = prop.PropertyType.ToDisplayString();
-          output.AppendLine($"    private {typeName} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    private {typeName} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {typeName} {prop.PropertyName}");
           output.AppendLine("    {");
-          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"      get => {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine("      set");
           output.AppendLine("      {");
-          output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod}();");
-          output.AppendLine($"        {PropPrefix}{prop.PropertyName} = value;");
+          output.AppendLine($"        base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"        {Names.PropPrefix}{prop.PropertyName} = value;");
           output.AppendLine("      }");
           output.AppendLine("    }");
           break;
 
         case EmitPhase.Constructor:
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = value.{prop.PropertyName};");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = value.{prop.PropertyName};");
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName},");
+          output.AppendLine($"          {prop.PropertyName} = this.{Names.PropPrefix}{prop.PropertyName},");
           break;
 
       }

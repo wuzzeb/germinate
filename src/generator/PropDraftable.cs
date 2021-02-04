@@ -31,7 +31,6 @@ namespace Germinate.Generator
 {
   public static class PropDraftable
   {
-    public const string PropPrefix = "__germinate_dprop__";
 
     public static void Emit(EmitPhase phase, RecordToDraft record, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
     {
@@ -43,27 +42,27 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {propRecord.DraftName} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    private {propRecord.DraftName} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {propRecord.InterfaceName} {prop.PropertyName}");
           output.AppendLine("    {");
-          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"      get => {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine("    }");
           output.AppendLine($"    public {record.InterfaceName} SetAndDraft{prop.PropertyName}({propRecord.FullClassName} value)");
           output.AppendLine("    {");
-          output.AppendLine($"      base.{DraftableGenerator.SetDirtyMethod}();");
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName}.{DraftableGenerator.ClearParentMethod}();");
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value, this);");
+          output.AppendLine($"      base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName}.{Names.ClearParentMethod}();");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value, this);");
           output.AppendLine("      return this;");
           output.AppendLine("    }");
 
           break;
 
         case EmitPhase.Constructor:
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value.{prop.PropertyName}, this);");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = new {propRecord.DraftName}(value.{prop.PropertyName}, this);");
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.{DraftableGenerator.FinishMethod}(),");
+          output.AppendLine($"          {prop.PropertyName} = this.{Names.PropPrefix}{prop.PropertyName}.{Names.FinishMethod}(),");
           break;
       }
     }

@@ -31,8 +31,6 @@ namespace Germinate.Generator
 {
   public static class PropListOfPrim
   {
-    public const string PropPrefix = "__germinate_lprop__";
-
     private static string ListType(RecordProperty prop)
     {
       return $"Germinate.Collections.ListOfPrim<{prop.TypeArguments[0]}>";
@@ -52,22 +50,22 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {ListType(prop)} {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    private {ListType(prop)} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {InterfaceType(prop)} {prop.PropertyName}");
           output.AppendLine("    {");
-          output.AppendLine($"      get => {PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"      get => {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine("    }");
           break;
 
         case EmitPhase.Constructor:
-          output.AppendLine($"      {PropPrefix}{prop.PropertyName} = new {ListType(prop)}(");
+          output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = new {ListType(prop)}(");
           output.AppendLine($"        value.{prop.PropertyName},");
-          output.AppendLine($"        base.{DraftableGenerator.SetDirtyMethod}");
+          output.AppendLine($"        base.{Names.SetDirtyMethod}");
           output.AppendLine($"      );");
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = this.{PropPrefix}{prop.PropertyName}.Finish(),");
+          output.AppendLine($"          {prop.PropertyName} = this.{Names.PropPrefix}{prop.PropertyName}.Finish(),");
           break;
       }
     }

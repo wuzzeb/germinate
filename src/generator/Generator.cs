@@ -34,13 +34,6 @@ namespace Germinate.Generator
   [Generator]
   public class DraftableGenerator : ISourceGenerator
   {
-    public const string Namespace = "Germinate";
-    public const string FinishMethod = "__germinate_finish";
-    public const string OriginalProp = "__germinate_original";
-    public const string IsDirtyProp = "__germinate_isDirty";
-    public const string SetDirtyMethod = "__germinate_setDirty";
-    public const string ClearParentMethod = "__germinate_clearParent";
-
     private class AttrSyntaxReceiver : ISyntaxReceiver
     {
       public List<RecordDeclarationSyntax> Records { get; } = new List<RecordDeclarationSyntax>();
@@ -79,7 +72,7 @@ namespace Germinate.Generator
         */
 
         var output = new StringBuilder();
-        output.AppendLine($"namespace {Namespace} {{");
+        output.AppendLine($"namespace {Names.Namespace} {{");
 
         // Interface
         output.AppendLine($"public interface {rds.InterfaceName} {{");
@@ -89,28 +82,28 @@ namespace Germinate.Generator
         output.AppendLine();
         output.AppendLine("public static partial class Producer {");
 
-        output.AppendLine($"  private class {rds.DraftName} : DraftableBase, {rds.InterfaceName} {{");
+        output.AppendLine($"  private class {rds.DraftName} : {Names.DraftableBase}, {rds.InterfaceName} {{");
 
         EmitProperties(EmitPhase.PropImplementation, rds, output, records);
 
         // constructor
-        output.AppendLine($"    private {rds.FullClassName} {OriginalProp};");
-        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, DraftableBase parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
+        output.AppendLine($"    private readonly {rds.FullClassName} {Names.OriginalProp};");
+        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase} parent, System.Action setParentDirty = null) : base(parent, setParentDirty)");
         output.AppendLine("    {");
-        output.AppendLine($"      {OriginalProp} = value;");
+        output.AppendLine($"      {Names.OriginalProp} = value;");
         EmitProperties(EmitPhase.Constructor, rds, output, records);
         output.AppendLine("    }"); // close constructor
 
         // finish
-        output.AppendLine($"    public {rds.FullClassName} {FinishMethod}()");
+        output.AppendLine($"    public {rds.FullClassName} {Names.FinishMethod}()");
         output.AppendLine("    {");
-        output.AppendLine($"      if (base.{IsDirtyProp})");
+        output.AppendLine($"      if (base.{Names.IsDirtyProp})");
         output.AppendLine("      {");
         output.AppendLine($"        return new {rds.FullClassName}() {{");
         EmitProperties(EmitPhase.Finish, rds, output, records);
         output.AppendLine("        };"); // close initializer
         output.AppendLine("      } else {");
-        output.AppendLine($"        return {OriginalProp};");
+        output.AppendLine($"        return {Names.OriginalProp};");
         output.AppendLine("      }"); // close else
         output.AppendLine("    }"); // close finish method
 
@@ -121,7 +114,7 @@ namespace Germinate.Generator
         output.AppendLine("  {");
         output.AppendLine($"    var draft = new {rds.DraftName}(value, null);");
         output.AppendLine("    f(draft);");
-        output.AppendLine($"    return draft.{FinishMethod}();");
+        output.AppendLine($"    return draft.{Names.FinishMethod}();");
         output.AppendLine("  }");
 
         output.AppendLine("}}"); // close Producer and namespace
@@ -160,21 +153,21 @@ namespace Germinate.Generator
 
     private string DraftableBase()
     {
-      return $@"namespace {Namespace} {{
+      return $@"namespace {Names.Namespace} {{
 [System.AttributeUsage(System.AttributeTargets.Class)]
 public class DraftableAttribute : System.Attribute {{ }}
 
 public static partial class Producer {{
-  private abstract class DraftableBase
+  private abstract class {Names.DraftableBase}
   {{
-    private DraftableBase _parent;
+    private {Names.DraftableBase} _parent;
     private System.Action _setParentDirty;
     private bool _dirty = false;
-    protected bool {IsDirtyProp} => _dirty;
+    protected bool {Names.IsDirtyProp} => _dirty;
 
-    protected void {SetDirtyMethod}()
+    protected void {Names.SetDirtyMethod}()
     {{
-      DraftableBase b = this;
+      {Names.DraftableBase} b = this;
       while (b != null)
       {{
         b._dirty = true;
@@ -186,13 +179,13 @@ public static partial class Producer {{
       }}
     }}
 
-    public void {ClearParentMethod}()
+    public void {Names.ClearParentMethod}()
     {{
       _parent = null;
       _setParentDirty = null;
     }}
 
-    protected DraftableBase(DraftableBase parent, System.Action setParentDirty)
+    protected {Names.DraftableBase}({Names.DraftableBase} parent, System.Action setParentDirty)
     {{
       _parent = parent;
       _setParentDirty = setParentDirty;

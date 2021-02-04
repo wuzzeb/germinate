@@ -64,7 +64,7 @@ namespace Germinate.Generator
           Model = model,
           ClassName = rds.Identifier.ToString(),
           FullClassName = model.GetDeclaredSymbol(rds).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-          DraftName = rds.Identifier.ToString() + "Draft",
+          DraftName = Names.DraftClassPrefix + rds.Identifier.ToString(),
           InterfaceName = "I" + rds.Identifier.ToString() + "Draft",
           Properties = rds.Members
             .OfType<PropertyDeclarationSyntax>()
