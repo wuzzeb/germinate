@@ -54,11 +54,11 @@ public static class Program
 
     Console.WriteLine(chicago.ToString());
     // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6,
-    //           Weather = Weather { TemperatureC = 10, PressureMB = 1023.4, Wind = "High" } }
+    //           Weather = Weather { TemperatureC = 10, PressureMB = 1023.4, Wind = High } }
 
     Console.WriteLine(chicagoTomorrow.ToString());
     // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6,
-    //           Weather = Weather { TemperatureC = 6, PressureMB = 1020.5, Wind = "High" } }
+    //           Weather = Weather { TemperatureC = 6, PressureMB = 1020.5, Wind = High } }
   }
 }
 ```
