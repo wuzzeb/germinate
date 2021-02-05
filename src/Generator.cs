@@ -55,22 +55,12 @@ namespace Germinate.Generator
     public void Execute(GeneratorExecutionContext context)
     {
       var attrReceiver = (AttrSyntaxReceiver)context.SyntaxReceiver;
-      using var log = new System.IO.StreamWriter(System.IO.File.OpenWrite(
-        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "genlog.txt")));
+      var records = BuildRecords.RecordsToDraft(context.Compilation, attrReceiver.Records);
 
       context.AddSource("DraftableBase.cs", DraftableBase());
 
-      var records = BuildRecords.RecordsToDraft(context.Compilation, attrReceiver.Records);
-
       foreach (var rds in records.Values)
       {
-        /*
-        foreach (var a in classSymbol.GetAttributes())
-        {
-          log.WriteLine(a.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-        }
-        */
-
         var output = new StringBuilder();
         output.AppendLine($"namespace {Names.Namespace} {{");
 
@@ -121,8 +111,6 @@ namespace Germinate.Generator
 
         output.AppendLine("}}"); // close Producer and namespace
 
-        log.WriteLine(output.ToString());
-        log.WriteLine("-------------------------------");
         context.AddSource(rds.ClassName + ".Draftable.cs", output.ToString());
       }
     }
