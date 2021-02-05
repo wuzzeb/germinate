@@ -3,13 +3,17 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>preview</LangVersion>
-    <OutputType>exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../src/Germinate.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="System.Collections.Immutable" Version="5.0.*" />
 
-    <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.*" />
+    <PackageReference Include="AutoFixture" Version="4.*" />
+    <PackageReference Include="FluentAssertions" Version="5.*" />
+    <PackageReference Include="xunit" Version="2.4.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.*"/>
   </ItemGroup>
 
 </Project>

@@ -53,7 +53,7 @@ namespace Germinate.Generator
           output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullPropertyTypeName}.Empty).ToBuilder();");
           output.AppendLine($"          base.{Names.AddCheckDirtyMethod}(() => {{");
           output.AppendLine($"            var newVal = {builderProp}.ToImmutable();");
-          output.AppendLine($"            if (newVal != {imProp}) {{");
+          output.AppendLine($"            if (!object.ReferenceEquals(newVal, {imProp})) {{");
           output.AppendLine($"              base.{Names.SetDirtyMethod}();");
           output.AppendLine($"              {imProp} = newVal;");
           output.AppendLine("            }");

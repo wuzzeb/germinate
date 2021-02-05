@@ -73,7 +73,7 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = {createdPropName} ? {draftPropName}.{Names.FinishMethod}() : {Names.OriginalProp}.{prop.PropertyName},");
+          output.AppendLine($"          {prop.PropertyName} = {createdPropName} ? {draftPropName}?.{Names.FinishMethod}() : {Names.OriginalProp}.{prop.PropertyName},");
           break;
       }
     }
