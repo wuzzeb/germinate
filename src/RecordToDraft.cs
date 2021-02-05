@@ -55,7 +55,7 @@ namespace Germinate.Generator
   {
     public static IReadOnlyDictionary<string, RecordToDraft> RecordsToDraft(Compilation comp, IEnumerable<RecordDeclarationSyntax> rdss)
     {
-      return rdss.Select(rds =>
+      return rdss.Select((rds, idx) =>
       {
         var model = comp.GetSemanticModel(rds.SyntaxTree);
         return new RecordToDraft()
@@ -63,7 +63,7 @@ namespace Germinate.Generator
           Decl = rds,
           ClassName = rds.Identifier.ToString(),
           FullClassName = model.GetDeclaredSymbol(rds).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-          DraftName = Names.DraftClassPrefix + rds.Identifier.ToString(),
+          DraftName = Names.DraftClassPrefix + idx.ToString() + "_" + rds.Identifier.ToString(),
           InterfaceName = "I" + rds.Identifier.ToString() + "Draft",
           Properties = rds.Members
             .OfType<PropertyDeclarationSyntax>()
