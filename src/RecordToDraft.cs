@@ -44,7 +44,6 @@ namespace Germinate.Generator
   public class RecordToDraft
   {
     public RecordDeclarationSyntax Decl { get; set; }
-    public SemanticModel Model { get; set; }
     public string ClassName { get; set; }
     public string FullClassName { get; set; }
     public string DraftName { get; set; }
@@ -62,7 +61,6 @@ namespace Germinate.Generator
         return new RecordToDraft()
         {
           Decl = rds,
-          Model = model,
           ClassName = rds.Identifier.ToString(),
           FullClassName = model.GetDeclaredSymbol(rds).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
           DraftName = Names.DraftClassPrefix + rds.Identifier.ToString(),
