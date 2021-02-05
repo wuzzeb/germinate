@@ -30,25 +30,26 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Germinate.Generator
 {
-  public record RecordProperty
+  // These should be records but source generators need to target netstandard2.0
+  public class RecordProperty
   {
-    public PropertyDeclarationSyntax Decl { get; init; }
-    public string PropertyName { get; init; }
-    public INamedTypeSymbol PropertyType { get; init; }
-    public string FullPropertyTypeName { get; init; }
-    public IReadOnlyList<string> TypeArguments { get; init; }
+    public PropertyDeclarationSyntax Decl { get; set; }
+    public string PropertyName { get; set; }
+    public INamedTypeSymbol PropertyType { get; set; }
+    public string FullPropertyTypeName { get; set; }
+    public IReadOnlyList<string> TypeArguments { get; set; }
   }
 
 
-  public record RecordToDraft
+  public class RecordToDraft
   {
-    public RecordDeclarationSyntax Decl { get; init; }
-    public SemanticModel Model { get; init; }
-    public string ClassName { get; init; }
-    public string FullClassName { get; init; }
-    public string DraftName { get; init; }
-    public string InterfaceName { get; init; }
-    public IReadOnlyList<RecordProperty> Properties { get; init; }
+    public RecordDeclarationSyntax Decl { get; set; }
+    public SemanticModel Model { get; set; }
+    public string ClassName { get; set; }
+    public string FullClassName { get; set; }
+    public string DraftName { get; set; }
+    public string InterfaceName { get; set; }
+    public IReadOnlyList<RecordProperty> Properties { get; set; }
   }
 
   public static class BuildRecords

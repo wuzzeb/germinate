@@ -4,7 +4,7 @@
     <PackageId>Germinate</PackageId>
     <AssemblyName>Germinate</AssemblyName>
     <OutputType>Library</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
 
     <Title>Germinate - copy-on-write immutable records</Title>
     <Product>Germinate</Product>
