@@ -49,7 +49,7 @@ public static class Program
     };
 
     // The following Produce function is created by Germinate
-    var chicagoTomorrow = chicago.Produce(draft => {
+    City chicagoTomorrow = chicago.Produce(draft => {
       draft.Weather.TemperatureC = 6;
       draft.Weather.PressureMB += 10.2;
     });
