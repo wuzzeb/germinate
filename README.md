@@ -1,5 +1,7 @@
 # Germinate
 
+[![NuGet Stats](https://img.shields.io/nuget/v/Germinate.svg)](https://www.nuget.org/packages/Germinate/) 
+
 Germinate allows you to modify C# v9 immutable records in a more convienient way.
 To obtain a new immutable record, you apply all your changes to a temporary draft.
 Once all the mutations are completed, Germinate applys the draft to generate a new
