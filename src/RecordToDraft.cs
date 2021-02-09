@@ -33,17 +33,15 @@ namespace Germinate.Generator
   // These should be records but source generators need to target netstandard2.0
   public class RecordProperty
   {
-    public PropertyDeclarationSyntax Decl { get; set; }
     public string PropertyName { get; set; }
-    public INamedTypeSymbol PropertyType { get; set; }
-    public string FullPropertyTypeName { get; set; }
-    public IReadOnlyList<string> TypeArguments { get; set; }
+    public string FullTypeName { get; set; }
+    public NullableAnnotation Nullable { get; set; }
+    public bool IsValueType { get; set; }
   }
 
 
   public class RecordToDraft
   {
-    public RecordDeclarationSyntax Decl { get; set; }
     public string ClassName { get; set; }
     public string FullClassName { get; set; }
     public string DraftName { get; set; }
@@ -60,7 +58,6 @@ namespace Germinate.Generator
         var model = comp.GetSemanticModel(rds.SyntaxTree);
         return new RecordToDraft()
         {
-          Decl = rds,
           ClassName = rds.Identifier.ToString(),
           FullClassName = model.GetDeclaredSymbol(rds).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
           DraftName = Names.DraftClassPrefix + idx.ToString() + "_" + rds.Identifier.ToString(),
@@ -69,14 +66,13 @@ namespace Germinate.Generator
             .OfType<PropertyDeclarationSyntax>()
             .Select(p =>
             {
-              var propType = model.GetSymbolInfo(p.Type).Symbol as INamedTypeSymbol;
+              var propSymbol = model.GetDeclaredSymbol(p) as IPropertySymbol;
               return new RecordProperty()
               {
-                Decl = p,
                 PropertyName = p.Identifier.ToString(),
-                PropertyType = propType,
-                FullPropertyTypeName = propType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                TypeArguments = propType.TypeArguments.Select(a => a.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).ToList()
+                Nullable = propSymbol.NullableAnnotation,
+                FullTypeName = propSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                IsValueType = propSymbol.Type.IsValueType,
               };
             })
             .ToList(),

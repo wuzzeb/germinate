@@ -33,14 +33,17 @@ namespace Germinate.Generator
   {
     public static void Emit(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
+      string typeName =
+          (prop.IsValueType || prop.Nullable == Microsoft.CodeAnalysis.NullableAnnotation.NotAnnotated)
+          ? prop.FullTypeName
+          : prop.FullTypeName + "?";
       switch (phase)
       {
         case EmitPhase.Interface:
-          output.AppendLine($"  {prop.PropertyType.ToDisplayString()} {prop.PropertyName} {{get; set;}}");
+          output.AppendLine($"  {typeName} {prop.PropertyName} {{get; set;}}");
           break;
 
         case EmitPhase.PropImplementation:
-          var typeName = prop.PropertyType.ToDisplayString();
           output.AppendLine($"    private {typeName} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {typeName} {prop.PropertyName}");
           output.AppendLine("    {");

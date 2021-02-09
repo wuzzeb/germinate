@@ -39,18 +39,18 @@ namespace Germinate.Generator
       switch (phase)
       {
         case EmitPhase.Interface:
-          output.AppendLine($"  {prop.FullPropertyTypeName}.Builder {prop.PropertyName} {{get;}}");
+          output.AppendLine($"  {prop.FullTypeName}.Builder {prop.PropertyName} {{get;}}");
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {prop.FullPropertyTypeName} {imProp};");
-          output.AppendLine($"    private {prop.FullPropertyTypeName}.Builder {builderProp} = null;");
-          output.AppendLine($"    public {prop.FullPropertyTypeName}.Builder {prop.PropertyName}");
+          output.AppendLine($"    private {prop.FullTypeName} {imProp};");
+          output.AppendLine($"    private {prop.FullTypeName}.Builder? {builderProp} = null;");
+          output.AppendLine($"    public {prop.FullTypeName}.Builder {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine("      get");
           output.AppendLine("      {");
           output.AppendLine($"        if ({builderProp} == null) {{");
-          output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullPropertyTypeName}.Empty).ToBuilder();");
+          output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullTypeName}.Empty).ToBuilder();");
           output.AppendLine($"          base.{Names.AddCheckDirtyMethod}(() => {{");
           output.AppendLine($"            var newVal = {builderProp}.ToImmutable();");
           output.AppendLine($"            if (!object.ReferenceEquals(newVal, {imProp})) {{");

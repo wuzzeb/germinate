@@ -62,6 +62,7 @@ namespace Germinate.Generator
       foreach (var rds in records.Values)
       {
         var output = new StringBuilder();
+        output.AppendLine("#nullable enable");
         output.AppendLine($"namespace {Names.Namespace} {{");
 
         // Interface
@@ -78,7 +79,7 @@ namespace Germinate.Generator
 
         // constructor
         output.AppendLine($"    private readonly {rds.FullClassName} {Names.OriginalProp};");
-        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase} parent, {Names.CheckDirtyStruct}? checkDirty = null) : base(parent, checkDirty)");
+        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase}? parent, {Names.CheckDirtyStruct}? checkDirty = null) : base(parent, checkDirty)");
         output.AppendLine("    {");
         output.AppendLine($"      {Names.OriginalProp} = value;");
         EmitProperties(EmitPhase.Constructor, rds, output, records);
@@ -131,11 +132,11 @@ namespace Germinate.Generator
     {
       foreach (var prop in rds.Properties)
       {
-        if (allRecords.TryGetValue(prop.FullPropertyTypeName, out var propRecord))
+        if (allRecords.TryGetValue(prop.FullTypeName, out var propRecord))
         {
-          PropDraftable.Emit(phase, rds, prop, propRecord, output);
+          PropDraftable.Emit(phase, prop, propRecord, output);
         }
-        else if (_immutableCollections.Any(t => prop.FullPropertyTypeName.StartsWith(t)))
+        else if (_immutableCollections.Any(t => prop.FullTypeName.StartsWith(t)))
         {
           PropImmutableCollection.Emit(phase, prop, output);
         }
@@ -148,7 +149,8 @@ namespace Germinate.Generator
 
     private string DraftableBase()
     {
-      return $@"namespace {Names.Namespace} {{
+      return $@"#nullable enable
+namespace {Names.Namespace} {{
 [System.AttributeUsage(System.AttributeTargets.Class)]
 public class DraftableAttribute : System.Attribute {{ }}
 
@@ -161,7 +163,7 @@ public static partial class Producer {{
 
   private abstract class {Names.DraftableBase}
   {{
-    private {Names.DraftableBase} _parent;
+    private {Names.DraftableBase}? _parent;
     private {Names.CheckDirtyStruct} _checkDirty;
     private bool _dirty = false;
 
@@ -169,7 +171,7 @@ public static partial class Producer {{
 
     protected void {Names.SetDirtyMethod}()
     {{
-      {Names.DraftableBase} b = this;
+      {Names.DraftableBase}? b = this;
       while (b != null)
       {{
         b._dirty = true;
@@ -182,10 +184,10 @@ public static partial class Producer {{
       _checkDirty.Checks.Add(a);
     }}
 
-    protected {Names.DraftableBase}({Names.DraftableBase} parent, {Names.CheckDirtyStruct}? checkDirty)
+    protected {Names.DraftableBase}({Names.DraftableBase}? parent, {Names.CheckDirtyStruct}? checkDirty)
     {{
       _parent = parent;
-      _checkDirty = parent == null ? checkDirty.Value : parent._checkDirty;
+      _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStruct}() {{Checks = new System.Collections.Generic.List<System.Action>() }});
     }}
   }}
 }}}}";

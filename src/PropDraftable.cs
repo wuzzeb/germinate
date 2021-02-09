@@ -32,21 +32,73 @@ namespace Germinate.Generator
   public static class PropDraftable
   {
 
-    public static void Emit(EmitPhase phase, RecordToDraft record, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    public static void Emit(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    {
+      if (prop.Nullable == Microsoft.CodeAnalysis.NullableAnnotation.NotAnnotated)
+      {
+        EmitNonNullable(phase, prop, propRecord, output);
+      }
+      else
+      {
+        EmitNullable(phase, prop, propRecord, output);
+      }
+    }
+
+    private static void EmitNonNullable(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    {
+      var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
+      switch (phase)
+      {
+        case EmitPhase.Interface:
+          output.AppendLine($"  {propRecord.InterfaceName} {prop.PropertyName} {{get;}}");
+          output.AppendLine($"  {propRecord.InterfaceName} Set{prop.PropertyName}({prop.FullTypeName} value);");
+          break;
+
+        case EmitPhase.PropImplementation:
+          output.AppendLine($"    private {propRecord.DraftName}? {draftPropName} = null;");
+          output.AppendLine($"    public {propRecord.InterfaceName} {prop.PropertyName}");
+          output.AppendLine("    {");
+          output.AppendLine($"      get {{");
+          output.AppendLine($"        if ({draftPropName} == null) {{");
+          output.AppendLine($"          {draftPropName} = new {propRecord.DraftName}({Names.OriginalProp}.{prop.PropertyName}, this);");
+          output.AppendLine("        }"); // close if checking not created
+          output.AppendLine($"        return {draftPropName};");
+          output.AppendLine("      }"); // close get
+          output.AppendLine("    }");
+          output.AppendLine($"    public {propRecord.InterfaceName} Set{prop.PropertyName}({propRecord.FullClassName} value)");
+          output.AppendLine("    {");
+          output.AppendLine($"      base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"      {draftPropName} = new {propRecord.DraftName}(value, this);");
+          output.AppendLine($"      return {draftPropName};");
+          output.AppendLine("    }");
+
+          break;
+
+        case EmitPhase.Constructor:
+          // nothing needed here, not initialized until the first get
+          break;
+
+        case EmitPhase.Finish:
+          output.AppendLine($"          {prop.PropertyName} = {draftPropName} != null ? {draftPropName}.{Names.FinishMethod}() : {Names.OriginalProp}.{prop.PropertyName},");
+          break;
+      }
+    }
+
+    private static void EmitNullable(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
     {
       var createdPropName = Names.PropPrefix + "creat_" + prop.PropertyName;
       var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
       switch (phase)
       {
         case EmitPhase.Interface:
-          output.AppendLine($"  {propRecord.InterfaceName} {prop.PropertyName} {{get;}}");
-          output.AppendLine($"  {record.InterfaceName} Set{prop.PropertyName}({prop.FullPropertyTypeName} value);");
+          output.AppendLine($"  {propRecord.InterfaceName}? {prop.PropertyName} {{get;}}");
+          output.AppendLine($"  {propRecord.InterfaceName}? Set{prop.PropertyName}({prop.FullTypeName}? value);");
           break;
 
         case EmitPhase.PropImplementation:
           output.AppendLine($"    private bool {createdPropName} = false;");
-          output.AppendLine($"    private {propRecord.DraftName} {draftPropName} = null;");
-          output.AppendLine($"    public {propRecord.InterfaceName} {prop.PropertyName}");
+          output.AppendLine($"    private {propRecord.DraftName}? {draftPropName} = null;");
+          output.AppendLine($"    public {propRecord.InterfaceName}? {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get {{");
           output.AppendLine($"        if (!{createdPropName}) {{");
@@ -58,12 +110,12 @@ namespace Germinate.Generator
           output.AppendLine($"        return {draftPropName};");
           output.AppendLine("      }"); // close get
           output.AppendLine("    }");
-          output.AppendLine($"    public {record.InterfaceName} Set{prop.PropertyName}({propRecord.FullClassName} value)");
+          output.AppendLine($"    public {propRecord.InterfaceName}? Set{prop.PropertyName}({propRecord.FullClassName}? value)");
           output.AppendLine("    {");
           output.AppendLine($"      base.{Names.SetDirtyMethod}();");
           output.AppendLine($"      {createdPropName} = true;");
           output.AppendLine($"      {draftPropName} = value == null ? null : new {propRecord.DraftName}(value, this);");
-          output.AppendLine("      return this;");
+          output.AppendLine($"      return {draftPropName};");
           output.AppendLine("    }");
 
           break;

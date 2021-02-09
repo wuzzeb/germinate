@@ -45,11 +45,11 @@ public static class Program
         Wind = "High",
       }
     };
-    
+
     // The following Produce function is created by Germinate
     var chicagoTomorrow = chicago.Produce(draft => {
       draft.Weather.TemperatureC = 6;
-      draft.Weather.PressureMB = 1020.5;
+      draft.Weather.PressureMB += 10.2;
     });
 
     Console.WriteLine(chicago.ToString());
@@ -58,7 +58,7 @@ public static class Program
 
     Console.WriteLine(chicagoTomorrow.ToString());
     // => City { Location = Chicago, Latitude = 41.9, Longitude = -87.6,
-    //           Weather = Weather { TemperatureC = 6, PressureMB = 1020.5, Wind = High } }
+    //           Weather = Weather { TemperatureC = 6, PressureMB = 1033.6, Wind = High } }
   }
 }
 ```
@@ -69,7 +69,10 @@ Immutable data is great, but once you start nesting multiple immutable records i
 Using `with`, the above example of updating Chicago's weather would look like:
 
 ```csharp
-var chicagoTomorrow = chicago with { Weather = chicago.Weather with { TemperatureC = 6, PressureMB = 1020.5 }};
+var chicagoTomorrow = chicago with { Weather = chicago.Weather with {
+                                      TemperatureC = 6,
+                                      PressureMB = chicago.Weather.PressureMB + 10.2,
+                                   }};
 ```
 
 These `with` expressions get more and more complex once more of your data becomes immutable, especially once lists and dictionaries
@@ -88,7 +91,7 @@ public interface ICityDraft {
   double Latitude { get; set; }
   double Longitude { get; set; }
   IWeatherDraft Weather { get; }
-  ICityDraft SetWeather(Weather value);
+  IWeatherDraft SetWeather(Weather value);
 }
 
 public static class Producer {
