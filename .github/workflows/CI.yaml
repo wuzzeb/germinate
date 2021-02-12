@@ -14,3 +14,4 @@ jobs:
 
       - run: dotnet build src
       - run: dotnet test test
+      - run: dotnet test test-dependency
