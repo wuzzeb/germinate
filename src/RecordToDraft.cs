@@ -37,56 +37,95 @@ namespace Germinate.Generator
     public string FullTypeName { get; set; }
     public NullableAnnotation Nullable { get; set; }
     public bool IsValueType { get; set; }
+    public DraftableRecord TypeIsDraftable { get; set; }
   }
 
 
-  public class RecordToDraft
+  public class DraftableRecord
   {
+    public bool Emit { get; set; }
     public string Namespace { get; set; }
-    public string ClassName { get; set; }
-    public string FullyQualifiedClassName { get; set; }
+    public string RecordName { get; set; }
+    public string FullyQualifiedRecordName { get; set; }
     public string InterfaceName { get; set; }
     public string FullyQualifiedInterfaceName { get; set; }
     public string DraftInstanceClassName { get; set; }
     public string FullyQualifiedDraftInstanceClassName { get; set; }
+    public DraftableRecord BaseRecord { get; set; }
     public IReadOnlyList<RecordProperty> Properties { get; set; }
   }
 
   public static class BuildRecords
   {
-    public static IReadOnlyDictionary<string, RecordToDraft> RecordsToDraft(Compilation comp, IEnumerable<RecordDeclarationSyntax> rdss)
+    public static IReadOnlyDictionary<string, DraftableRecord> RecordsToDraft(Compilation comp, IEnumerable<RecordDeclarationSyntax> rdss)
     {
-      return rdss.Select((rds, idx) =>
+      var records = new Dictionary<string, DraftableRecord>();
+
+      foreach (var rds in rdss)
       {
         var model = comp.GetSemanticModel(rds.SyntaxTree);
-        var symb = model.GetDeclaredSymbol(rds);
-        var nsp = symb.ContainingNamespace?.ToDisplayString();
-        var className = rds.Identifier.ToString();
-        return new RecordToDraft()
-        {
-          ClassName = className,
-          Namespace = nsp,
-          FullyQualifiedClassName = symb.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-          InterfaceName = "I" + className + "Draft",
-          FullyQualifiedInterfaceName = "global::" + (string.IsNullOrEmpty(nsp) ? "" : nsp + ".") + "I" + className + "Draft",
-          DraftInstanceClassName = className + "Draft",
-          FullyQualifiedDraftInstanceClassName = "global::Germinate.Internal" + (string.IsNullOrEmpty(nsp) ? "" : "." + nsp) + "." + className + "Draft",
-          Properties = rds.Members
-            .OfType<PropertyDeclarationSyntax>()
-            .Select(p =>
+        var recordSymbol = model.GetDeclaredSymbol(rds) as INamedTypeSymbol;
+
+        var record = AnalyzeRecord(recordSymbol, records);
+        record.Emit = true;
+      }
+
+      return records;
+    }
+
+    private static DraftableRecord AnalyzeRecord(INamedTypeSymbol recordSymbol, IDictionary<string, DraftableRecord> allRecords)
+    {
+      var fullQualName = recordSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+      DraftableRecord record;
+      if (allRecords.TryGetValue(fullQualName, out record))
+      {
+        return record;
+      }
+
+      var nsp = recordSymbol.ContainingNamespace?.ToDisplayString();
+      var recordName = recordSymbol.Name;
+
+      DraftableRecord baseRecord = null;
+      if (recordSymbol.BaseType != null && recordSymbol.BaseType.SpecialType == SpecialType.None)
+      {
+        baseRecord = AnalyzeRecord(recordSymbol.BaseType, allRecords);
+      }
+
+      record = new DraftableRecord()
+      {
+        Emit = false,
+        RecordName = recordName,
+        Namespace = nsp,
+        FullyQualifiedRecordName = fullQualName,
+        InterfaceName = "I" + recordName + "Draft",
+        FullyQualifiedInterfaceName = "global::" + (string.IsNullOrEmpty(nsp) ? "" : nsp + ".") + "I" + recordName + "Draft",
+        DraftInstanceClassName = recordName + "Draft",
+        FullyQualifiedDraftInstanceClassName = "global::Germinate.Internal" + (string.IsNullOrEmpty(nsp) ? "" : "." + nsp) + "." + recordName + "Draft",
+        BaseRecord = baseRecord,
+        Properties = recordSymbol.GetMembers()
+          .OfType<IPropertySymbol>()
+          .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+          .Select(p =>
+          {
+            DraftableRecord typeIsDraftable = null;
+            if (p.Type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "Draftable"))
             {
-              var propSymbol = model.GetDeclaredSymbol(p) as IPropertySymbol;
-              return new RecordProperty()
-              {
-                PropertyName = p.Identifier.ToString(),
-                Nullable = propSymbol.NullableAnnotation,
-                FullTypeName = propSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                IsValueType = propSymbol.Type.IsValueType,
-              };
-            })
-            .ToList(),
-        };
-      }).ToDictionary(r => r.FullyQualifiedClassName, r => r);
+              typeIsDraftable = AnalyzeRecord(p.Type as INamedTypeSymbol, allRecords);
+            }
+            return new RecordProperty()
+            {
+              PropertyName = p.Name,
+              Nullable = p.NullableAnnotation,
+              FullTypeName = p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+              IsValueType = p.Type.IsValueType,
+              TypeIsDraftable = typeIsDraftable,
+            };
+          })
+          .ToList(),
+      };
+
+      allRecords.Add(fullQualName, record);
+      return record;
     }
   }
 }

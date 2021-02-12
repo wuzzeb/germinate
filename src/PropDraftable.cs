@@ -32,20 +32,21 @@ namespace Germinate.Generator
   public static class PropDraftable
   {
 
-    public static void Emit(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    public static void Emit(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
       if (prop.Nullable == Microsoft.CodeAnalysis.NullableAnnotation.NotAnnotated)
       {
-        EmitNonNullable(phase, prop, propRecord, output);
+        EmitNonNullable(phase, prop, output);
       }
       else
       {
-        EmitNullable(phase, prop, propRecord, output);
+        EmitNullable(phase, prop, output);
       }
     }
 
-    private static void EmitNonNullable(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    private static void EmitNonNullable(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
+      var propRecord = prop.TypeIsDraftable;
       var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
       switch (phase)
       {
@@ -55,7 +56,7 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
+          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName} {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get {{");
@@ -67,7 +68,7 @@ namespace Germinate.Generator
           output.AppendLine("    }");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName} Set{prop.PropertyName}({prop.FullTypeName} value)");
           output.AppendLine("    {");
-          output.AppendLine($"      base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"      {Names.SetDirtyMethod}();");
           output.AppendLine($"      {draftPropName} = new {propRecord.FullyQualifiedDraftInstanceClassName}(value, this);");
           output.AppendLine($"      return {draftPropName};");
           output.AppendLine("    }");
@@ -84,8 +85,9 @@ namespace Germinate.Generator
       }
     }
 
-    private static void EmitNullable(EmitPhase phase, RecordProperty prop, RecordToDraft propRecord, StringBuilder output)
+    private static void EmitNullable(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
+      var propRecord = prop.TypeIsDraftable;
       var createdPropName = Names.PropPrefix + "creat_" + prop.PropertyName;
       var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
       switch (phase)
@@ -96,8 +98,8 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private bool {createdPropName} = false;");
-          output.AppendLine($"    private {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
+          output.AppendLine($"    protected bool {createdPropName} = false;");
+          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName}? {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get {{");
@@ -112,7 +114,7 @@ namespace Germinate.Generator
           output.AppendLine("    }");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName}? Set{prop.PropertyName}({prop.FullTypeName}? value)");
           output.AppendLine("    {");
-          output.AppendLine($"      base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"      {Names.SetDirtyMethod}();");
           output.AppendLine($"      {createdPropName} = true;");
           output.AppendLine($"      {draftPropName} = value == null ? null : new {propRecord.FullyQualifiedDraftInstanceClassName}(value, this);");
           output.AppendLine($"      return {draftPropName};");

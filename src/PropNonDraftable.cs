@@ -44,13 +44,13 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {typeName} {Names.PropPrefix}{prop.PropertyName};");
+          output.AppendLine($"    protected {typeName} {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine($"    public {typeName} {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get => {Names.PropPrefix}{prop.PropertyName};");
           output.AppendLine("      set");
           output.AppendLine("      {");
-          output.AppendLine($"        base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"        {Names.SetDirtyMethod}();");
           output.AppendLine($"        {Names.PropPrefix}{prop.PropertyName} = value;");
           output.AppendLine("      }");
           output.AppendLine("    }");
@@ -61,7 +61,7 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = this.{Names.PropPrefix}{prop.PropertyName},");
+          output.AppendLine($"          {prop.PropertyName} = {Names.PropPrefix}{prop.PropertyName},");
           break;
 
       }

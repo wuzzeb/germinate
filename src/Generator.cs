@@ -56,6 +56,7 @@ namespace Germinate.Generator
     {
       var attrReceiver = (AttrSyntaxReceiver)context.SyntaxReceiver;
       var records = BuildRecords.RecordsToDraft(context.Compilation, attrReceiver.Records);
+      var assemblyName = context.Compilation.AssemblyName;
 
       context.AddSource("DraftableBase.cs", DraftableBase());
 
@@ -72,8 +73,8 @@ namespace Germinate.Generator
         {
           output.AppendLine($"namespace {rds.Namespace} {{");
         }
-        output.AppendLine($"public interface {rds.InterfaceName} {{");
-        EmitProperties(EmitPhase.Interface, rds, output, records);
+        output.AppendLine($"public interface {rds.InterfaceName} {(rds.BaseRecord != null ? " : " + rds.BaseRecord.FullyQualifiedInterfaceName : "")} {{");
+        EmitProperties(EmitPhase.Interface, rds, output);
         output.AppendLine("}"); // close interface
         if (!string.IsNullOrEmpty(rds.Namespace))
         {
@@ -83,25 +84,32 @@ namespace Germinate.Generator
         output.AppendLine();
 
         output.AppendLine($"namespace Germinate.Internal{(string.IsNullOrEmpty(rds.Namespace) ? "" : "." + rds.Namespace)} {{");
-        output.AppendLine($"  public class {rds.DraftInstanceClassName} : {Names.FullyQualifiedDraftableBase}, {rds.FullyQualifiedInterfaceName} {{");
+        output.AppendLine($"  public class {rds.DraftInstanceClassName} : {rds.BaseRecord?.FullyQualifiedDraftInstanceClassName ?? Names.FullyQualifiedDraftableBase}, {rds.FullyQualifiedInterfaceName} {{");
 
-        EmitProperties(EmitPhase.PropImplementation, rds, output, records);
+        EmitProperties(EmitPhase.PropImplementation, rds, output);
 
         // constructor
-        output.AppendLine($"    private readonly {rds.FullyQualifiedClassName} {Names.OriginalProp};");
-        output.AppendLine($"    public {rds.DraftInstanceClassName}({rds.FullyQualifiedClassName} value, {Names.FullyQualifiedDraftableBase}? parent, {Names.FullyQualifiedCheckDirty}? checkDirty = null) : base(parent, checkDirty)");
+        output.AppendLine($"    private readonly {rds.FullyQualifiedRecordName} {Names.OriginalProp};");
+        output.AppendLine($"    public {rds.DraftInstanceClassName}({rds.FullyQualifiedRecordName} value, {Names.FullyQualifiedDraftableBase}? parent, {Names.FullyQualifiedCheckDirty}? checkDirty = null) : base(value, parent, checkDirty)");
         output.AppendLine("    {");
         output.AppendLine($"      {Names.OriginalProp} = value;");
-        EmitProperties(EmitPhase.Constructor, rds, output, records);
+        EmitProperties(EmitPhase.Constructor, rds, output);
         output.AppendLine("    }"); // close constructor
 
         // finish
-        output.AppendLine($"    public {rds.FullyQualifiedClassName} {Names.FinishMethod}()");
+        output.AppendLine($"    public override {rds.FullyQualifiedRecordName} {Names.FinishMethod}()");
         output.AppendLine("    {");
-        output.AppendLine($"      if (base.{Names.IsDirtyProp})");
+        output.AppendLine($"      if ({Names.IsDirtyProp})");
         output.AppendLine("      {");
-        output.AppendLine($"        return new {rds.FullyQualifiedClassName}() {{");
-        EmitProperties(EmitPhase.Finish, rds, output, records);
+        output.AppendLine($"        return new {rds.FullyQualifiedRecordName}() {{");
+        {
+          DraftableRecord r = rds;
+          while (r != null)
+          {
+            EmitProperties(EmitPhase.Finish, r, output);
+            r = r.BaseRecord;
+          }
+        }
         output.AppendLine("        };"); // close initializer
         output.AppendLine("      } else {");
         output.AppendLine($"        return {Names.OriginalProp};");
@@ -113,8 +121,8 @@ namespace Germinate.Generator
 
         // Producer
         output.AppendLine("namespace Germinate {");
-        output.AppendLine($"public static partial class Producer {{");
-        output.AppendLine($"  public static {rds.FullyQualifiedClassName} Produce(this {rds.FullyQualifiedClassName} value, System.Action<{rds.FullyQualifiedInterfaceName}> f)");
+        output.AppendLine($"public static partial class Producer_{assemblyName?.Replace(".", "_")} {{");
+        output.AppendLine($"  public static {rds.FullyQualifiedRecordName} Produce(this {rds.FullyQualifiedRecordName} value, System.Action<{rds.FullyQualifiedInterfaceName}> f)");
         output.AppendLine("  {");
         output.AppendLine($"    var check = new {Names.FullyQualifiedCheckDirty}() {{ Checks = new System.Collections.Generic.List<System.Action>() }};");
         output.AppendLine($"    var draft = new {rds.FullyQualifiedDraftInstanceClassName}(value, null, check);");
@@ -126,7 +134,7 @@ namespace Germinate.Generator
 
         //log.WriteLine(output.ToString());
         //log.WriteLine("########################################");
-        context.AddSource(rds.ClassName + ".Draftable.cs", output.ToString());
+        context.AddSource(rds.RecordName + ".Draftable.cs", output.ToString());
       }
 
       //log.Close();
@@ -138,19 +146,17 @@ namespace Germinate.Generator
         "global::System.Collections.Immutable.ImmutableDictionary",
         "global::System.Collections.Immutable.ImmutableHashSet",
         "global::System.Collections.Immutable.ImmutableList",
-        "global::System.Collections.Immutable.ImmutableQueue",
         "global::System.Collections.Immutable.ImmutableSortedDictionary",
         "global::System.Collections.Immutable.ImmutableSortedSet",
-        "global::System.Collections.Immutable.ImmutableStack"
       };
 
-    private void EmitProperties(EmitPhase phase, RecordToDraft rds, StringBuilder output, IReadOnlyDictionary<string, RecordToDraft> allRecords)
+    private void EmitProperties(EmitPhase phase, DraftableRecord rds, StringBuilder output)
     {
       foreach (var prop in rds.Properties)
       {
-        if (allRecords.TryGetValue(prop.FullTypeName, out var propRecord))
+        if (prop.TypeIsDraftable != null)
         {
-          PropDraftable.Emit(phase, prop, propRecord, output);
+          PropDraftable.Emit(phase, prop, output);
         }
         else if (_immutableCollections.Any(t => prop.FullTypeName.StartsWith(t)))
         {
@@ -167,13 +173,13 @@ namespace Germinate.Generator
     {
       return $@"#nullable enable
 namespace Germinate {{
-[System.AttributeUsage(System.AttributeTargets.Class)]
-public class DraftableAttribute : System.Attribute {{ }}
+[global::System.AttributeUsage(global::System.AttributeTargets.Class)]
+public class DraftableAttribute : global::System.Attribute {{ }}
 
 namespace Internal {{
   public struct {Names.CheckDirtyStructName}
   {{
-    public System.Collections.Generic.List<System.Action> Checks;
+    public global::System.Collections.Generic.List<global::System.Action> Checks;
   }}
 
 
@@ -195,15 +201,17 @@ namespace Internal {{
       }}
     }}
 
-    protected void {Names.AddCheckDirtyMethod}(System.Action a)
+    protected void {Names.AddCheckDirtyMethod}(global::System.Action a)
     {{
       _checkDirty.Checks.Add(a);
     }}
 
-    protected {Names.DraftableBaseClassName}({Names.DraftableBaseClassName}? parent, {Names.CheckDirtyStructName}? checkDirty)
+    public abstract object {Names.FinishMethod}();
+
+    protected {Names.DraftableBaseClassName}(object value, {Names.DraftableBaseClassName}? parent, {Names.CheckDirtyStructName}? checkDirty)
     {{
       _parent = parent;
-      _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStructName}() {{Checks = new System.Collections.Generic.List<System.Action>() }});
+      _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStructName}() {{Checks = new global::System.Collections.Generic.List<global::System.Action>() }});
     }}
   }}
 }}}}";

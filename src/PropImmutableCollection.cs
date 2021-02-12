@@ -43,7 +43,7 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    private {prop.FullTypeName} {imProp};");
+          output.AppendLine($"    protected {prop.FullTypeName} {imProp};");
           output.AppendLine($"    private {prop.FullTypeName}.Builder? {builderProp} = null;");
           output.AppendLine($"    public {prop.FullTypeName}.Builder {prop.PropertyName}");
           output.AppendLine("    {");
@@ -51,10 +51,10 @@ namespace Germinate.Generator
           output.AppendLine("      {");
           output.AppendLine($"        if ({builderProp} == null) {{");
           output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullTypeName}.Empty).ToBuilder();");
-          output.AppendLine($"          base.{Names.AddCheckDirtyMethod}(() => {{");
+          output.AppendLine($"          {Names.AddCheckDirtyMethod}(() => {{");
           output.AppendLine($"            var newVal = {builderProp}.ToImmutable();");
           output.AppendLine($"            if (!object.ReferenceEquals(newVal, {imProp})) {{");
-          output.AppendLine($"              base.{Names.SetDirtyMethod}();");
+          output.AppendLine($"              {Names.SetDirtyMethod}();");
           output.AppendLine($"              {imProp} = newVal;");
           output.AppendLine("            }");
           output.AppendLine($"            {builderProp} = null;");
@@ -71,7 +71,7 @@ namespace Germinate.Generator
 
         case EmitPhase.Finish:
           // The CheckDirty method above is called before Finish, and sets any changes back into imProp
-          output.AppendLine($"          {prop.PropertyName} = this.{imProp},");
+          output.AppendLine($"          {prop.PropertyName} = {imProp},");
           break;
 
       }
