@@ -30,7 +30,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Germinate.Generator
 {
-  // These should be records but source generators need to target netstandard2.0
   public class RecordProperty
   {
     public string PropertyName { get; set; }
@@ -108,7 +107,7 @@ namespace Germinate.Generator
           .Select(p =>
           {
             DraftableRecord typeIsDraftable = null;
-            if (p.Type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "Draftable"))
+            if (p.Type.GetAttributes().Any(IsDraftableAttribute))
             {
               typeIsDraftable = AnalyzeRecord(p.Type as INamedTypeSymbol, allRecords);
             }
@@ -126,6 +125,14 @@ namespace Germinate.Generator
 
       allRecords.Add(fullQualName, record);
       return record;
+    }
+
+    private static bool IsDraftableAttribute(AttributeData a)
+    {
+      var fullQualClass = a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+      // is Draftable if the attribute hasn't been analyzed yet because it is being emitted by the generator in this assembly
+      // is global::Germinate.DraftableAttribute if the attribute is defined in a dependent assembly
+      return fullQualClass == "Draftable" || fullQualClass == "global::Germinate.DraftableAttribute";
     }
   }
 }

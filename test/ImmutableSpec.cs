@@ -31,7 +31,7 @@ using Xunit;
 using AutoFixture;
 using FluentAssertions;
 
-namespace Germinate.Tests
+namespace GerminateTests
 {
   [Draftable]
   public record FFF

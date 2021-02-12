@@ -29,59 +29,31 @@ using Xunit;
 using AutoFixture;
 using FluentAssertions;
 
-namespace GerminateTests
+namespace GerminateTestDependency
 {
   [Draftable]
-  public record QQQ
+  public record SSS : GerminateTests.RRR
   {
-    public float FFF { get; init; }
+    public DateTime DDD { get; init; }
   }
 
-  [Draftable]
-  public record RRR
-  {
-    public int III { get; init; }
-    public string SSS { get; init; }
-    public QQQ QQQ { get; init; }
-    public ImmutableList<string> Immm { get; init; }
-  }
-
-  [Draftable]
-  public record SSS : RRR
-  {
-    public bool BBB { get; init; }
-    public TimeSpan Time { get; init; }
-  }
-
-  public class InheritanceSpec
+  public class InheritsFromDepSpec
   {
     private Fixture _fixture;
 
-    public InheritanceSpec()
+    public InheritsFromDepSpec()
     {
       _fixture = new Fixture();
-      _fixture.Customizations.Add(new ImmutableSpecimenBuilder());
+      _fixture.Customizations.Add(new GerminateTests.ImmutableSpecimenBuilder());
     }
 
-    [Fact]
-    public void LeavesUnchanged()
-    {
-      var s = _fixture.Create<SSS>();
-
-      var s2 = s.Produce(draft =>
-      {
-        // read but don't write draft.Immm
-        System.Diagnostics.Debug.WriteLine(draft.Immm.Count.ToString());
-      });
-
-      s.Should().BeSameAs(s2);
-    }
 
     [Fact]
-    public void AdjustsSSS()
+    public void SetsSSS()
     {
       var s = _fixture.Create<SSS>();
-      var q = _fixture.Create<QQQ>();
+      var q = _fixture.Create<GerminateTests.QQQ>();
+      var d = _fixture.Create<DateTime>();
 
       var s2 = s.Produce(draft =>
       {
@@ -89,8 +61,7 @@ namespace GerminateTests
         draft.SetQQQ(q);
         draft.QQQ.FFF += 10.0f;
         draft.Immm.Add("Hello World");
-        draft.BBB = !draft.BBB;
-        draft.Time += TimeSpan.FromHours(2);
+        draft.DDD = d;
       });
 
       s2.Should().BeEquivalentTo(new SSS
@@ -99,8 +70,7 @@ namespace GerminateTests
         SSS = s.SSS,
         QQQ = q with { FFF = q.FFF + 10.0f },
         Immm = s.Immm.Add("Hello World"),
-        BBB = !s.BBB,
-        Time = s.Time.Add(TimeSpan.FromHours(2))
+        DDD = d,
       }, options => options.ComparingByMembers<SSS>());
     }
   }

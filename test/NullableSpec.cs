@@ -31,7 +31,7 @@ using FluentAssertions;
 
 #nullable enable
 
-namespace Germinate.Tests
+namespace GerminateTests
 {
   [Draftable]
   public record HHH

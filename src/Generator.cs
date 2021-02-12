@@ -58,12 +58,13 @@ namespace Germinate.Generator
       var records = BuildRecords.RecordsToDraft(context.Compilation, attrReceiver.Records);
       var assemblyName = context.Compilation.AssemblyName;
 
-      context.AddSource("DraftableBase.cs", DraftableBase());
+      // Check if Draftable attribute defined in a dependency of this assembly
+      if (context.Compilation.GetTypeByMetadataName("Germinate.DraftableAttribute") == null)
+      {
+        context.AddSource("DraftableBase.cs", DraftableBase);
+      }
 
-      //var log = new System.IO.StreamWriter(System.IO.File.OpenWrite(
-      //  System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "genlog.txt")));
-
-      foreach (var rds in records.Values)
+      foreach (var rds in records.Values.Where(r => r.Emit))
       {
         var output = new StringBuilder();
         output.AppendLine("#nullable enable");
@@ -121,7 +122,7 @@ namespace Germinate.Generator
 
         // Producer
         output.AppendLine("namespace Germinate {");
-        output.AppendLine($"public static partial class Producer_{assemblyName?.Replace(".", "_")} {{");
+        output.AppendLine($"public static partial class Producer_{assemblyName?.Replace(".", "_").Replace("-", "_")} {{");
         output.AppendLine($"  public static {rds.FullyQualifiedRecordName} Produce(this {rds.FullyQualifiedRecordName} value, System.Action<{rds.FullyQualifiedInterfaceName}> f)");
         output.AppendLine("  {");
         output.AppendLine($"    var check = new {Names.FullyQualifiedCheckDirty}() {{ Checks = new System.Collections.Generic.List<System.Action>() }};");
@@ -132,12 +133,8 @@ namespace Germinate.Generator
         output.AppendLine("  }");
         output.AppendLine("}}"); // close Producer and namespace
 
-        //log.WriteLine(output.ToString());
-        //log.WriteLine("########################################");
         context.AddSource(rds.RecordName + ".Draftable.cs", output.ToString());
       }
-
-      //log.Close();
     }
 
     private static IReadOnlyList<string> _immutableCollections =
@@ -169,9 +166,8 @@ namespace Germinate.Generator
       }
     }
 
-    private string DraftableBase()
-    {
-      return $@"#nullable enable
+    private static readonly string DraftableBase =
+$@"#nullable enable
 namespace Germinate {{
 [global::System.AttributeUsage(global::System.AttributeTargets.Class)]
 public class DraftableAttribute : global::System.Attribute {{ }}
@@ -215,6 +211,5 @@ namespace Internal {{
     }}
   }}
 }}}}";
-    }
   }
 }

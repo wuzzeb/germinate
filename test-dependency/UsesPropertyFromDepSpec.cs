@@ -28,70 +28,47 @@ using Xunit;
 using AutoFixture;
 using FluentAssertions;
 
-namespace GerminateTests
+namespace GerminateTestDependency
 {
   [Draftable]
-  public record AAA
+  public record TTT
   {
-    public int III { get; init; }
     public string SSS { get; init; }
-    public bool? NullBool { get; init; }
-    public DateTime SomeDate { get; init; }
+    public GerminateTests.DDD DDD { get; init; }
   }
 
-  public class BasicSpec
+  public class UsesPropertyFromDepSpec
   {
     [Fact]
-    public void SameInstanceWithoutDraftChange()
+    public void NoChangeOnEmpty()
     {
       var fix = new Fixture();
-      var a = fix.Create<AAA>();
+      var t = fix.Create<TTT>();
 
-      a.Produce(draft => { }).Should().BeSameAs(a);
+      t.Produce(draft => { }).Should().BeSameAs(t);
     }
 
     [Fact]
-    public void SetsInt()
+    public void ChangesNestedProperty()
     {
       var fix = new Fixture();
-      var a = fix.Create<AAA>();
+      var t = fix.Create<TTT>();
+      var c = fix.Create<GerminateTests.CCC>();
 
-      a.Produce(draft => draft.III += 100)
-        .Should().Be(a with { III = a.III + 100 });
-    }
+      var t2 = t.Produce(draft =>
+      {
+        draft.DDD.B.III += 44;
+        draft.DDD.C = c;
+      });
 
-    [Fact]
-    public void SetsString()
-    {
-      var fix = new Fixture();
-      var a = fix.Create<AAA>();
-
-      a.Produce(draft => draft.SSS = "hello")
-        .Should().Be(a with { SSS = "hello" });
-    }
-
-    [Fact]
-    public void SetsNullBool()
-    {
-      var fix = new Fixture();
-      var a = fix.Create<AAA>();
-
-      a.Produce(draft => draft.NullBool = null)
-        .Should().Be(a with { NullBool = null });
-
-      a.Produce(draft => draft.NullBool = !(draft.NullBool ?? true))
-        .Should().Be(a with { NullBool = !(a.NullBool ?? true) });
-    }
-
-    [Fact]
-    public void SetsDate()
-    {
-      var fix = new Fixture();
-      var a = fix.Create<AAA>();
-
-      a.Produce(draft => draft.SomeDate += TimeSpan.FromHours(1))
-        .Should().Be(a with { SomeDate = a.SomeDate.AddHours(1) });
+      t2.Should().Be(t with
+      {
+        DDD = t.DDD with
+        {
+          B = t.DDD.B with { III = t.DDD.B.III + 44 },
+          C = c
+        }
+      });
     }
   }
-
 }
