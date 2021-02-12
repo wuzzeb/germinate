@@ -42,10 +42,13 @@ namespace Germinate.Generator
 
   public class RecordToDraft
   {
+    public string Namespace { get; set; }
     public string ClassName { get; set; }
-    public string FullClassName { get; set; }
-    public string DraftName { get; set; }
+    public string FullyQualifiedClassName { get; set; }
     public string InterfaceName { get; set; }
+    public string FullyQualifiedInterfaceName { get; set; }
+    public string DraftInstanceClassName { get; set; }
+    public string FullyQualifiedDraftInstanceClassName { get; set; }
     public IReadOnlyList<RecordProperty> Properties { get; set; }
   }
 
@@ -56,12 +59,18 @@ namespace Germinate.Generator
       return rdss.Select((rds, idx) =>
       {
         var model = comp.GetSemanticModel(rds.SyntaxTree);
+        var symb = model.GetDeclaredSymbol(rds);
+        var nsp = symb.ContainingNamespace?.ToDisplayString();
+        var className = rds.Identifier.ToString();
         return new RecordToDraft()
         {
-          ClassName = rds.Identifier.ToString(),
-          FullClassName = model.GetDeclaredSymbol(rds).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-          DraftName = Names.DraftClassPrefix + idx.ToString() + "_" + rds.Identifier.ToString(),
-          InterfaceName = "I" + rds.Identifier.ToString() + "Draft",
+          ClassName = className,
+          Namespace = nsp,
+          FullyQualifiedClassName = symb.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+          InterfaceName = "I" + className + "Draft",
+          FullyQualifiedInterfaceName = "global::" + (string.IsNullOrEmpty(nsp) ? "" : nsp + ".") + "I" + className + "Draft",
+          DraftInstanceClassName = className + "Draft",
+          FullyQualifiedDraftInstanceClassName = "global::Germinate.Internal" + (string.IsNullOrEmpty(nsp) ? "" : "." + nsp) + "." + className + "Draft",
           Properties = rds.Members
             .OfType<PropertyDeclarationSyntax>()
             .Select(p =>
@@ -77,7 +86,7 @@ namespace Germinate.Generator
             })
             .ToList(),
         };
-      }).ToDictionary(r => r.FullClassName, r => r);
+      }).ToDictionary(r => r.FullyQualifiedClassName, r => r);
     }
   }
 }

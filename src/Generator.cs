@@ -59,38 +59,48 @@ namespace Germinate.Generator
 
       context.AddSource("DraftableBase.cs", DraftableBase());
 
+      //var log = new System.IO.StreamWriter(System.IO.File.OpenWrite(
+      //  System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "genlog.txt")));
+
       foreach (var rds in records.Values)
       {
         var output = new StringBuilder();
         output.AppendLine("#nullable enable");
-        output.AppendLine($"namespace {Names.Namespace} {{");
 
         // Interface
+        if (!string.IsNullOrEmpty(rds.Namespace))
+        {
+          output.AppendLine($"namespace {rds.Namespace} {{");
+        }
         output.AppendLine($"public interface {rds.InterfaceName} {{");
         EmitProperties(EmitPhase.Interface, rds, output, records);
         output.AppendLine("}"); // close interface
+        if (!string.IsNullOrEmpty(rds.Namespace))
+        {
+          output.AppendLine("}");
+        }
 
         output.AppendLine();
-        output.AppendLine("public static partial class Producer {");
 
-        output.AppendLine($"  private class {rds.DraftName} : {Names.DraftableBase}, {rds.InterfaceName} {{");
+        output.AppendLine($"namespace Germinate.Internal{(string.IsNullOrEmpty(rds.Namespace) ? "" : "." + rds.Namespace)} {{");
+        output.AppendLine($"  public class {rds.DraftInstanceClassName} : {Names.FullyQualifiedDraftableBase}, {rds.FullyQualifiedInterfaceName} {{");
 
         EmitProperties(EmitPhase.PropImplementation, rds, output, records);
 
         // constructor
-        output.AppendLine($"    private readonly {rds.FullClassName} {Names.OriginalProp};");
-        output.AppendLine($"    public {rds.DraftName}({rds.FullClassName} value, {Names.DraftableBase}? parent, {Names.CheckDirtyStruct}? checkDirty = null) : base(parent, checkDirty)");
+        output.AppendLine($"    private readonly {rds.FullyQualifiedClassName} {Names.OriginalProp};");
+        output.AppendLine($"    public {rds.DraftInstanceClassName}({rds.FullyQualifiedClassName} value, {Names.FullyQualifiedDraftableBase}? parent, {Names.FullyQualifiedCheckDirty}? checkDirty = null) : base(parent, checkDirty)");
         output.AppendLine("    {");
         output.AppendLine($"      {Names.OriginalProp} = value;");
         EmitProperties(EmitPhase.Constructor, rds, output, records);
         output.AppendLine("    }"); // close constructor
 
         // finish
-        output.AppendLine($"    public {rds.FullClassName} {Names.FinishMethod}()");
+        output.AppendLine($"    public {rds.FullyQualifiedClassName} {Names.FinishMethod}()");
         output.AppendLine("    {");
         output.AppendLine($"      if (base.{Names.IsDirtyProp})");
         output.AppendLine("      {");
-        output.AppendLine($"        return new {rds.FullClassName}() {{");
+        output.AppendLine($"        return new {rds.FullyQualifiedClassName}() {{");
         EmitProperties(EmitPhase.Finish, rds, output, records);
         output.AppendLine("        };"); // close initializer
         output.AppendLine("      } else {");
@@ -99,21 +109,27 @@ namespace Germinate.Generator
         output.AppendLine("    }"); // close finish method
 
         output.AppendLine("  }"); // close class
+        output.AppendLine("}"); // close Internal namespace
 
         // Producer
-        output.AppendLine($"  public static {rds.FullClassName} Produce(this {rds.FullClassName} value, System.Action<{rds.InterfaceName}> f)");
+        output.AppendLine("namespace Germinate {");
+        output.AppendLine($"public static partial class Producer {{");
+        output.AppendLine($"  public static {rds.FullyQualifiedClassName} Produce(this {rds.FullyQualifiedClassName} value, System.Action<{rds.FullyQualifiedInterfaceName}> f)");
         output.AppendLine("  {");
-        output.AppendLine($"    var check = new {Names.CheckDirtyStruct}() {{ Checks = new System.Collections.Generic.List<System.Action>() }};");
-        output.AppendLine($"    var draft = new {rds.DraftName}(value, null, check);");
+        output.AppendLine($"    var check = new {Names.FullyQualifiedCheckDirty}() {{ Checks = new System.Collections.Generic.List<System.Action>() }};");
+        output.AppendLine($"    var draft = new {rds.FullyQualifiedDraftInstanceClassName}(value, null, check);");
         output.AppendLine("    f(draft);");
         output.AppendLine("    foreach (var a in check.Checks) a();");
         output.AppendLine($"    return draft.{Names.FinishMethod}();");
         output.AppendLine("  }");
-
         output.AppendLine("}}"); // close Producer and namespace
 
+        //log.WriteLine(output.ToString());
+        //log.WriteLine("########################################");
         context.AddSource(rds.ClassName + ".Draftable.cs", output.ToString());
       }
+
+      //log.Close();
     }
 
     private static IReadOnlyList<string> _immutableCollections =
@@ -150,28 +166,28 @@ namespace Germinate.Generator
     private string DraftableBase()
     {
       return $@"#nullable enable
-namespace {Names.Namespace} {{
+namespace Germinate {{
 [System.AttributeUsage(System.AttributeTargets.Class)]
 public class DraftableAttribute : System.Attribute {{ }}
 
-public static partial class Producer {{
-  private struct {Names.CheckDirtyStruct}
+namespace Internal {{
+  public struct {Names.CheckDirtyStructName}
   {{
     public System.Collections.Generic.List<System.Action> Checks;
   }}
 
 
-  private abstract class {Names.DraftableBase}
+  public abstract class {Names.DraftableBaseClassName}
   {{
-    private {Names.DraftableBase}? _parent;
-    private {Names.CheckDirtyStruct} _checkDirty;
+    private {Names.DraftableBaseClassName}? _parent;
+    private {Names.CheckDirtyStructName} _checkDirty;
     private bool _dirty = false;
 
     protected bool {Names.IsDirtyProp} => _dirty;
 
     protected void {Names.SetDirtyMethod}()
     {{
-      {Names.DraftableBase}? b = this;
+      {Names.DraftableBaseClassName}? b = this;
       while (b != null)
       {{
         b._dirty = true;
@@ -184,10 +200,10 @@ public static partial class Producer {{
       _checkDirty.Checks.Add(a);
     }}
 
-    protected {Names.DraftableBase}({Names.DraftableBase}? parent, {Names.CheckDirtyStruct}? checkDirty)
+    protected {Names.DraftableBaseClassName}({Names.DraftableBaseClassName}? parent, {Names.CheckDirtyStructName}? checkDirty)
     {{
       _parent = parent;
-      _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStruct}() {{Checks = new System.Collections.Generic.List<System.Action>() }});
+      _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStructName}() {{Checks = new System.Collections.Generic.List<System.Action>() }});
     }}
   }}
 }}}}";

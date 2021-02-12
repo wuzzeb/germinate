@@ -26,11 +26,10 @@ namespace Germinate.Generator
 {
   public static class Names
   {
-    public const string Namespace = "Germinate";
-
-    public const string DraftableBase = "__germinate_DraftableBase";
-    public const string DraftClassPrefix = "__germinate_Draft__";
-    public const string CheckDirtyStruct = "__germinate_CheckDirty";
+    public const string DraftableBaseClassName = "__germinate_DraftableBase";
+    public const string FullyQualifiedDraftableBase = "global::Germinate.Internal." + DraftableBaseClassName;
+    public const string CheckDirtyStructName = "__germinate_CheckDirty";
+    public const string FullyQualifiedCheckDirty = "global::Germinate.Internal." + CheckDirtyStructName;
 
     public const string FinishMethod = "__germinate_finish";
     public const string OriginalProp = "__germinate_original";
