@@ -37,6 +37,7 @@ namespace GerminateTests
     public string SSS { get; init; }
     public bool? NullBool { get; init; }
     public DateTime SomeDate { get; init; }
+    public int ReadOnlyIII => III + 15;
   }
 
   public class BasicSpec

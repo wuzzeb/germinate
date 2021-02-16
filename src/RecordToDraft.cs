@@ -103,7 +103,12 @@ namespace Germinate.Generator
         BaseRecord = baseRecord,
         Properties = recordSymbol.GetMembers()
           .OfType<IPropertySymbol>()
-          .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+          .Where(p => p.DeclaredAccessibility == Accessibility.Public &&
+                      p.GetMethod != null &&
+                      p.GetMethod.DeclaredAccessibility == Accessibility.Public &&
+                      p.SetMethod != null &&
+                      p.SetMethod.DeclaredAccessibility == Accessibility.Public
+                )
           .Select(p =>
           {
             DraftableRecord typeIsDraftable = null;
