@@ -56,7 +56,7 @@ namespace Germinate.Generator
           output.AppendLine("    }");
           break;
 
-        case EmitPhase.Constructor:
+        case EmitPhase.Init:
           output.AppendLine($"      {Names.PropPrefix}{prop.PropertyName} = value.{prop.PropertyName};");
           break;
 

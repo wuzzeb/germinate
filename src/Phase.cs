@@ -28,7 +28,7 @@ namespace Germinate.Generator
   {
     Interface,
     PropImplementation,
-    Constructor,
+    Init,
     Finish
   }
 }

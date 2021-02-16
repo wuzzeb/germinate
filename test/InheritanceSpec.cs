@@ -103,5 +103,34 @@ namespace GerminateTests
         Time = s.Time.Add(TimeSpan.FromHours(2))
       }, options => options.ComparingByMembers<SSS>());
     }
+
+    [Fact]
+    public void SetsRRR()
+    {
+      var s = _fixture.Create<SSS>();
+      var r = _fixture.Create<RRR>();
+
+      var s2 = s.Produce(draft => draft.SetFromRecord(r));
+
+      s2.Should().BeEquivalentTo(new SSS
+      {
+        III = r.III,
+        SSS = r.SSS,
+        QQQ = r.QQQ,
+        Immm = r.Immm,
+        BBB = s.BBB,
+        Time = s.Time
+      }, options => options.ComparingByMembers<SSS>());
+    }
+
+    [Fact]
+    public void SetsSSS()
+    {
+      var s = _fixture.Create<SSS>();
+      var newS = _fixture.Create<SSS>();
+
+      s.Produce(draft => draft.SetFromRecord(newS))
+        .Should().BeEquivalentTo(newS, options => options.ComparingByMembers<SSS>());
+    }
   }
 }
