@@ -28,6 +28,7 @@ using Germinate;
 using Xunit;
 using AutoFixture;
 using FluentAssertions;
+using System.Collections.Immutable;
 
 #nullable enable
 
@@ -46,10 +47,20 @@ namespace GerminateTests
     public HHH NonNullHHH { get; init; } = new() { LLL = 10L };
     public HHH? NullHHH { get; init; }
     public Uri? Uri { get; init; } // want to test a normal class marked as nullable
+    public ImmutableList<int>? NullLst { get; init; }
+    public ImmutableList<double> NonNullLst { get; init; } = ImmutableList<double>.Empty;
   }
 
   public class NullableSpec
   {
+    private Fixture _fixture;
+
+    public NullableSpec()
+    {
+      _fixture = new Fixture();
+      _fixture.Customizations.Add(new ImmutableSpecimenBuilder());
+    }
+
     [Fact]
     public void SetsNonNullHHH()
     {
@@ -84,9 +95,8 @@ namespace GerminateTests
     [Fact]
     public void SetsToRealValues()
     {
-      var fixture = new Fixture();
       var n = new NNN() { };
-      var h = fixture.Create<HHH>();
+      var h = _fixture.Create<HHH>();
 
       var n2 = n.Produce(draft =>
       {
@@ -102,8 +112,7 @@ namespace GerminateTests
     [Fact]
     public void SetsToNull()
     {
-      var fixture = new Fixture();
-      var h = fixture.Create<HHH>();
+      var h = _fixture.Create<HHH>();
       var n = new NNN()
       {
         NullHHH = h,
@@ -119,6 +128,35 @@ namespace GerminateTests
       n2.NonNullHHH.Should().BeSameAs(n.NonNullHHH);
       n2.NullHHH.Should().BeNull();
       n2.Uri.Should().BeNull();
+    }
+
+    [Fact]
+    public void HandlesNullList()
+    {
+      var n = _fixture.Create<NNN>() with { NullLst = null };
+
+      var n2 = n.Produce(d => d.NullLst.Add(20));
+
+      n2.Should().BeEquivalentTo(n with { NullLst = ImmutableList.Create(20) },
+        options => options.ComparingByMembers<NNN>());
+    }
+
+    [Fact]
+    public void AddsToLists()
+    {
+      var n = _fixture.Create<NNN>();
+
+      var n2 = n.Produce(d =>
+      {
+        d.NullLst.Add(20);
+        d.NonNullLst.Add(30);
+      });
+
+      n2.Should().BeEquivalentTo(n with
+      {
+        NullLst = n.NullLst?.Add(20),
+        NonNullLst = n.NonNullLst.Add(30)
+      }, options => options.ComparingByMembers<NNN>());
     }
   }
 }

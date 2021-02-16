@@ -43,7 +43,14 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    protected {prop.FullTypeName} {imProp};");
+          if (prop.Nullable == Microsoft.CodeAnalysis.NullableAnnotation.NotAnnotated)
+          {
+            output.AppendLine($"    protected {prop.FullTypeName} {imProp};");
+          }
+          else
+          {
+            output.AppendLine($"    protected {prop.FullTypeName}? {imProp};");
+          }
           output.AppendLine($"    private {prop.FullTypeName}.Builder? {builderProp} = null;");
           output.AppendLine($"    public {prop.FullTypeName}.Builder {prop.PropertyName}");
           output.AppendLine("    {");
