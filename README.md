@@ -86,6 +86,7 @@ draft technique is to create the following:
 public interface IWeatherDraft {
   int TemperatureC { get; set; }
   double PressureMB { get; set; }
+  string Wind { get; set; }
 }
 
 public interface ICityDraft {
@@ -159,8 +160,12 @@ all the `Produce` extension methods.
 
 Finally, Germinate generates the implementation of the draftable interfaces inside the
 `Germinate.Internal` namespace. These classes are public so that if Germinte is used in multiple
-assemblies, Germinate can generate references to the drafts of records in dependent assemblies. Despite
-these being public, they should never be used directly.
+assemblies, Germinate can generate references to the drafts of records in dependent assemblies. These
+implementations are carefully implemented with copy-on-write, and delay creating a new draftable
+instance until the getter is actually accessed. (That is, if the `CurWeather` property on the city
+is never accessed in the action, no weather draft object will be created and the newly returned city
+will use the original weather record object.) Despite these being public, they should never be used
+directly.
 
 For example, consider the following record:
 
@@ -192,7 +197,7 @@ namespace Germinate {
   public static class Producer_AssemblyName {
     public static MyRecord Produce(this MyRecord val, Action<IMyRecordDraft> f)
     {
-      // make new instance of class which implements IMyRecordDraft with values initially coming from val
+      // make new instance which implements IMyRecordDraft with values initially coming from val
       // call f
       // convert result to new MyRecord
     }
@@ -213,7 +218,9 @@ Since these are normal non-draftable properties, Germinate translates them to a 
 You can then create a new read only list or dictionary using LINQ. For example,
 
 ```csharp
-[Draftable] public record SomeNumbers { IReadOnlyList<int> Numbers {get; init;} }
+[Draftable] public record SomeNumbers {
+  IReadOnlyList<int> Numbers { get; init; }
+}
 ```
 
 can be used as
@@ -248,6 +255,12 @@ var moreEvens = evens.Produce(draft => {
   draft.Numbers.Add(12);
 });
 ```
+
+`draft.Numbers` has type
+[ImmutableList&lt;int&gt;.Builder](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable.immutablelist-1.builder) and Germinate
+will initialize the builder with the contents of `evens.Numbers`. At the end of the `Produce` function, Germinate calls the
+[ToImmutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable.immutablelist-1.builder.toimmutable)
+method to convert the builder to a new immutable list to be contained in `moreEvens`.
 
 ## Operator Overload
 
@@ -300,6 +313,23 @@ unitedStates.Produce(draftUS => {
 Note how `draftUS.Cities` has type
 [ImmutableDictionary&lt;string, City&gt;.Builder](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable.immutabledictionary-2.builder)
 and so supports get and set with a new value. The `%=` operator on `City` allows adjusting that value directly with a draft action.
+
+## Limitations
+
+- Each draftable record requires a public zero-argument constructor. The `Produce` function created by Germinate uses this constuctor to initalize
+  a new copy of the record, setting all drafted properties.
+
+- If a draftable record inherits from another record, the parent record must also be draftable all the way back to the inheritance root. Just make
+  sure each record in the inheritance heirarchy is marked with the `[Draftable]` attribute.
+
+- Using the immutable collection `Builder`s, you can't distinguish between a null or empty collection. Germinate produces the `Builder` lazily
+  in the draft property getter. If the original collection was null the builder will be created as initially empty.
+
+- When using Germinate in multiple dependent assemblies and you want to mix the records in the same draftable record,
+  there must be a single common ancestor assembly that references Germinate. This is because if no depdenent assembly uses
+  Germinate, Germinate generates a base class in the `Germinate.Internal` namespace. If two independent assemblies
+  reference Germinate, there will be two separate definitions of this base class. In this situation, Germinate could
+  still be used separately on the records in the two assemblies, but you couldn't combine them into a single draftable record.
 
 ## License
 
