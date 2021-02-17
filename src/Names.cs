@@ -36,7 +36,6 @@ namespace Germinate.Generator
     public const string IsDirtyProp = "__germinate_isDirty";
     public const string SetDirtyMethod = "__germinate_setDirty";
     public const string AddCheckDirtyMethod = "__germinate_addCheckDirty";
-    public const string InitMethod = "__germinate_init";
     public const string PropPrefix = "__germinate_prop__";
   }
 }

@@ -76,7 +76,6 @@ namespace Germinate.Generator
         }
         output.AppendLine($"public interface {rds.InterfaceName} {(rds.BaseRecord != null ? " : " + rds.BaseRecord.FullyQualifiedInterfaceName : "")} {{");
         EmitProperties(EmitPhase.Interface, rds, output);
-        output.AppendLine($"  public void SetFromRecord({rds.FullyQualifiedRecordName} value);");
         output.AppendLine("}"); // close interface
         if (!string.IsNullOrEmpty(rds.Namespace))
         {
@@ -90,30 +89,13 @@ namespace Germinate.Generator
 
         EmitProperties(EmitPhase.PropImplementation, rds, output);
 
-        // init
-        output.AppendLine($"    protected void {Names.InitMethod}({rds.FullyQualifiedRecordName} value)");
-        output.AppendLine("    {");
-        EmitProperties(EmitPhase.Init, rds, output);
-        output.AppendLine("    }"); // close init
-
-        // SetFromRecord
-        output.AppendLine($"    public void SetFromRecord({rds.FullyQualifiedRecordName} value)");
-        output.AppendLine("    {");
-        output.AppendLine($"      base.SetFromRecord(value);");
-        output.AppendLine($"      {Names.InitMethod}(value);");
-        output.AppendLine("    }"); // close SetFromRecord
-
         // constructor
-        // CS8616 is warning Non-nullable field '__germinate_original' must contain a non-null value when exiting constructor.
-        // C# can't currently detect that it is set in the InitMethod, although it might in a future C# version.  In any case,
-        // we initialize in the InitMethod so can ignore the warning
-        output.AppendLine("    #pragma warning disable CS8618");
-
+        output.AppendLine($"    private readonly {rds.FullyQualifiedRecordName} {Names.OriginalProp};");
         output.AppendLine($"    public {rds.DraftInstanceClassName}({rds.FullyQualifiedRecordName} value, {Names.FullyQualifiedDraftableBase}? parent, {Names.FullyQualifiedCheckDirty}? checkDirty = null) : base(value, parent, checkDirty)");
         output.AppendLine("    {");
-        output.AppendLine($"      {Names.InitMethod}(value);");
+        output.AppendLine($"      {Names.OriginalProp} = value;");
+        EmitProperties(EmitPhase.Constructor, rds, output);
         output.AppendLine("    }"); // close constructor
-        output.AppendLine("    #pragma warning restore CS8618");
 
         // finish
         output.AppendLine($"    public override {rds.FullyQualifiedRecordName} {Names.FinishMethod}()");
@@ -131,7 +113,7 @@ namespace Germinate.Generator
         }
         output.AppendLine("        };"); // close initializer
         output.AppendLine("      } else {");
-        output.AppendLine($"        return ({rds.FullyQualifiedRecordName}){Names.OriginalProp};");
+        output.AppendLine($"        return {Names.OriginalProp};");
         output.AppendLine("      }"); // close else
         output.AppendLine("    }"); // close finish method
 
@@ -222,16 +204,8 @@ namespace Internal {{
 
     public abstract object {Names.FinishMethod}();
 
-    protected object {Names.OriginalProp};
-
-    protected void SetFromRecord(object value)
-    {{
-      {Names.SetDirtyMethod}();
-    }}
-
     protected {Names.DraftableBaseClassName}(object value, {Names.DraftableBaseClassName}? parent, {Names.CheckDirtyStructName}? checkDirty)
     {{
-      {Names.OriginalProp} = value;
       _parent = parent;
       _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStructName}() {{Checks = new global::System.Collections.Generic.List<global::System.Action>() }});
     }}

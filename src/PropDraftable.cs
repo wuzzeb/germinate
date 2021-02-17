@@ -48,7 +48,6 @@ namespace Germinate.Generator
     {
       var propRecord = prop.TypeIsDraftable;
       var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
-      var origPropName = Names.PropPrefix + "orig_" + prop.PropertyName;
       switch (phase)
       {
         case EmitPhase.Interface:
@@ -57,13 +56,12 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    protected {propRecord.FullyQualifiedRecordName} {origPropName};");
-          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName};");
+          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName} {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get {{");
           output.AppendLine($"        if ({draftPropName} == null) {{");
-          output.AppendLine($"          {draftPropName} = new {propRecord.FullyQualifiedDraftInstanceClassName}({origPropName}, this);");
+          output.AppendLine($"          {draftPropName} = new {propRecord.FullyQualifiedDraftInstanceClassName}({Names.OriginalProp}.{prop.PropertyName}, this);");
           output.AppendLine("        }"); // close if checking not created
           output.AppendLine($"        return {draftPropName};");
           output.AppendLine("      }"); // close get
@@ -77,13 +75,12 @@ namespace Germinate.Generator
 
           break;
 
-        case EmitPhase.Init:
-          output.AppendLine($"      {origPropName} = value.{prop.PropertyName};");
-          output.AppendLine($"      {draftPropName} = null;");
+        case EmitPhase.Constructor:
+          // nothing needed here, not initialized until the first get
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = {draftPropName} != null ? {draftPropName}.{Names.FinishMethod}() : {origPropName},");
+          output.AppendLine($"          {prop.PropertyName} = {draftPropName} != null ? {draftPropName}.{Names.FinishMethod}() : {Names.OriginalProp}.{prop.PropertyName},");
           break;
       }
     }
@@ -91,8 +88,8 @@ namespace Germinate.Generator
     private static void EmitNullable(EmitPhase phase, RecordProperty prop, StringBuilder output)
     {
       var propRecord = prop.TypeIsDraftable;
+      var createdPropName = Names.PropPrefix + "creat_" + prop.PropertyName;
       var draftPropName = Names.PropPrefix + "draft_" + prop.PropertyName;
-      var origPropName = Names.PropPrefix + "orig_" + prop.PropertyName;
       switch (phase)
       {
         case EmitPhase.Interface:
@@ -101,13 +98,16 @@ namespace Germinate.Generator
           break;
 
         case EmitPhase.PropImplementation:
-          output.AppendLine($"    protected {propRecord.FullyQualifiedRecordName}? {origPropName};");
-          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName};");
+          output.AppendLine($"    protected bool {createdPropName} = false;");
+          output.AppendLine($"    protected {propRecord.FullyQualifiedDraftInstanceClassName}? {draftPropName} = null;");
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName}? {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine($"      get {{");
-          output.AppendLine($"        if ({origPropName} != null && {draftPropName} == null) {{");
-          output.AppendLine($"          {draftPropName} = new {propRecord.FullyQualifiedDraftInstanceClassName}({origPropName}, this);");
+          output.AppendLine($"        if (!{createdPropName}) {{");
+          output.AppendLine($"          {createdPropName} = true;");
+          output.AppendLine($"          if ({Names.OriginalProp}.{prop.PropertyName} != null) {{");
+          output.AppendLine($"            {draftPropName} = new {propRecord.FullyQualifiedDraftInstanceClassName}({Names.OriginalProp}.{prop.PropertyName}, this);");
+          output.AppendLine("          }"); // close if checking original prop not null
           output.AppendLine("        }"); // close if checking not created
           output.AppendLine($"        return {draftPropName};");
           output.AppendLine("      }"); // close get
@@ -115,20 +115,19 @@ namespace Germinate.Generator
           output.AppendLine($"    public {propRecord.FullyQualifiedInterfaceName}? Set{prop.PropertyName}({prop.FullTypeName}? value)");
           output.AppendLine("    {");
           output.AppendLine($"      {Names.SetDirtyMethod}();");
-          output.AppendLine($"      {origPropName} = value;");
-          output.AppendLine($"      {draftPropName} = null;");
+          output.AppendLine($"      {createdPropName} = true;");
+          output.AppendLine($"      {draftPropName} = value == null ? null : new {propRecord.FullyQualifiedDraftInstanceClassName}(value, this);");
           output.AppendLine($"      return {draftPropName};");
           output.AppendLine("    }");
 
           break;
 
-        case EmitPhase.Init:
-          output.AppendLine($"      {origPropName} = value.{prop.PropertyName};");
-          output.AppendLine($"      {draftPropName} = null;");
+        case EmitPhase.Constructor:
+          // nothing needed here, not initialized until the first get
           break;
 
         case EmitPhase.Finish:
-          output.AppendLine($"          {prop.PropertyName} = {draftPropName} != null ? {draftPropName}.{Names.FinishMethod}() : {origPropName},");
+          output.AppendLine($"          {prop.PropertyName} = {createdPropName} ? {draftPropName}?.{Names.FinishMethod}() : {Names.OriginalProp}.{prop.PropertyName},");
           break;
       }
     }

@@ -51,7 +51,7 @@ namespace Germinate.Generator
           {
             output.AppendLine($"    protected {prop.FullTypeName}? {imProp};");
           }
-          output.AppendLine($"    private {prop.FullTypeName}.Builder? {builderProp};");
+          output.AppendLine($"    private {prop.FullTypeName}.Builder? {builderProp} = null;");
           output.AppendLine($"    public {prop.FullTypeName}.Builder {prop.PropertyName}");
           output.AppendLine("    {");
           output.AppendLine("      get");
@@ -72,9 +72,8 @@ namespace Germinate.Generator
           output.AppendLine("    }");
           break;
 
-        case EmitPhase.Init:
+        case EmitPhase.Constructor:
           output.AppendLine($"      {imProp} = value.{prop.PropertyName};");
-          output.AppendLine($"      {builderProp} = null;");
           break;
 
         case EmitPhase.Finish:
