@@ -90,10 +90,8 @@ namespace Germinate.Generator
         EmitProperties(EmitPhase.PropImplementation, rds, output);
 
         // constructor
-        output.AppendLine($"    private readonly {rds.FullyQualifiedRecordName} {Names.OriginalProp};");
         output.AppendLine($"    public {rds.DraftInstanceClassName}({rds.FullyQualifiedRecordName} value, {Names.FullyQualifiedDraftableBase}? parent, {Names.FullyQualifiedCheckDirty}? checkDirty = null) : base(value, parent, checkDirty)");
         output.AppendLine("    {");
-        output.AppendLine($"      {Names.OriginalProp} = value;");
         EmitProperties(EmitPhase.Constructor, rds, output);
         output.AppendLine("    }"); // close constructor
 
@@ -113,7 +111,7 @@ namespace Germinate.Generator
         }
         output.AppendLine("        };"); // close initializer
         output.AppendLine("      } else {");
-        output.AppendLine($"        return {Names.OriginalProp};");
+        output.AppendLine($"        return ({rds.FullyQualifiedRecordName}){Names.OriginalProp};");
         output.AppendLine("      }"); // close else
         output.AppendLine("    }"); // close finish method
 
@@ -153,7 +151,7 @@ namespace Germinate.Generator
       {
         if (prop.TypeIsDraftable != null)
         {
-          PropDraftable.Emit(phase, prop, output);
+          PropDraftable.Emit(phase, rds, prop, output);
         }
         else if (_immutableCollections.Any(t => prop.FullTypeName.StartsWith(t)))
         {
@@ -204,8 +202,11 @@ namespace Internal {{
 
     public abstract object {Names.FinishMethod}();
 
+    protected object {Names.OriginalProp};
+
     protected {Names.DraftableBaseClassName}(object value, {Names.DraftableBaseClassName}? parent, {Names.CheckDirtyStructName}? checkDirty)
     {{
+      {Names.OriginalProp} = value;
       _parent = parent;
       _checkDirty = parent != null ? parent._checkDirty : (checkDirty ?? new {Names.CheckDirtyStructName}() {{Checks = new global::System.Collections.Generic.List<global::System.Action>() }});
     }}
