@@ -47,7 +47,9 @@ namespace GerminateTests
   {
     public bool BBB { get; init; }
     public ImmutableList<long> LongLst { get; init; }
+    public ImmutableArray<FFF> FffArr { get; init; }
     public ImmutableList<FFF> FffLst { get; init; }
+    public ImmutableDictionary<string, FFF> FffDict { get; init; }
   }
 
   public class ImmutableSpec
@@ -103,6 +105,50 @@ namespace GerminateTests
     }
 
     [Fact]
+    public void UpdatesNonNullFffArr()
+    {
+      var g = _fixture.Create<GGG>();
+      var f = _fixture.Create<FFF>();
+
+      g.Produce(draft => draft.FffArr[0] = f)
+      .Should().BeEquivalentTo(
+        g with { FffArr = (new[] { f }).Concat(g.FffArr.Skip(1)).ToImmutableArray() },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void UpdatesNullFffArr()
+    {
+      var g = _fixture.Create<GGG>() with { FffArr = default(ImmutableArray<FFF>) };
+      var f = _fixture.Create<FFF>();
+
+      g.Produce(draft => draft.FffArr.Add(f))
+      .Should().BeEquivalentTo(
+        g with { FffArr = ImmutableArray.Create(f) },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void AdjustsFffArr()
+    {
+      var g = _fixture.Create<GGG>();
+
+      g.Produce(draft => draft.FffArr.AdjustAll(fd => fd.III += 20))
+      .Should().BeEquivalentTo(
+        g with { FffArr = g.FffArr.Select(f => f with { III = f.III + 20 }).ToImmutableArray() },
+        options => options.ComparingByMembers<GGG>()
+      );
+
+      g.Produce(draft => draft.FffArr.AdjustAll((fd, idx) => fd.III += 30 + idx))
+      .Should().BeEquivalentTo(
+        g with { FffArr = g.FffArr.Select((f, idx) => f with { III = f.III + 30 + idx }).ToImmutableArray() },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
     public void UpdatesFFFList()
     {
       var g = _fixture.Create<GGG>();
@@ -118,6 +164,101 @@ namespace GerminateTests
         options => options.ComparingByMembers<GGG>()
       );
     }
+
+    [Fact]
+    public void AddsToNullFFFList()
+    {
+      var g = _fixture.Create<GGG>() with { FffLst = null };
+      var f = _fixture.Create<FFF>();
+
+      g.Produce(draft =>
+      {
+        draft.FffLst.Add(f);
+      })
+      .Should().BeEquivalentTo(
+        g with { FffLst = ImmutableList.Create(f) },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void AdjustsFFFList()
+    {
+      var g = _fixture.Create<GGG>();
+
+      g.Produce(draft =>
+      {
+        draft.FffLst.AdjustAll(fd =>
+        {
+          fd.III += 50;
+        });
+      })
+      .Should().BeEquivalentTo(
+        g with { FffLst = g.FffLst.Select(f => f with { III = f.III + 50 }).ToImmutableList() },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void AdjustsFFFIndexedList()
+    {
+      var g = _fixture.Create<GGG>();
+
+      g.Produce(draft =>
+      {
+        draft.FffLst.AdjustAll((fd, idx) =>
+        {
+          fd.III += 10 + idx;
+        });
+      })
+      .Should().BeEquivalentTo(
+        g with { FffLst = g.FffLst.Select((f, idx) => f with { III = f.III + 10 + idx }).ToImmutableList() },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void UpdatesFFFDict()
+    {
+      var g = _fixture.Create<GGG>();
+      var newF = _fixture.Create<FFF>();
+
+      g.Produce(draft =>
+      {
+        draft.FffDict["Hello"] = newF;
+      })
+      .Should().BeEquivalentTo(
+        g with { FffDict = g.FffDict.Add("Hello", newF) },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
+
+    [Fact]
+    public void AdjustsFFFDict()
+    {
+      var g = _fixture.Create<GGG>();
+
+      g.Produce(draft =>
+      {
+        draft.FffDict.AdjustAll((k, df) =>
+        {
+          df.III += 10 + k.Length;
+          df.SSS += k;
+        });
+      })
+      .Should()
+      .BeEquivalentTo(
+        g with
+        {
+          FffDict = ImmutableDictionary<string, FFF>.Empty.AddRange(
+          g.FffDict.Select(k =>
+            KeyValuePair.Create(k.Key, k.Value with { III = k.Value.III + 10 + k.Key.Length, SSS = k.Value.SSS + k.Key })
+          )
+        )
+        },
+        options => options.ComparingByMembers<GGG>()
+      );
+    }
   }
 
   public class ImmutableSpecimenBuilder : AutoFixture.Kernel.ISpecimenBuilder
@@ -130,20 +271,37 @@ namespace GerminateTests
       if (t == null) return new AutoFixture.Kernel.NoSpecimen();
 
       var args = t.GetGenericArguments();
-      if (args.Length != 1 || !t.GetGenericTypeDefinition().FullName.StartsWith("System.Collections.Immutable.Immutable"))
+
+
+      if (args.Length == 1 && (t.GetGenericTypeDefinition().FullName.StartsWith("System.Collections.Immutable.ImmutableList") || t.GetGenericTypeDefinition().FullName.StartsWith("System.Collections.Immutable.ImmutableArray")))
+      {
+        var addRange =
+          t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+          .Where(m => m.Name == "AddRange" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType.FullName.StartsWith("System.Collections.Generic.IEnumerable"))
+          .FirstOrDefault();
+
+        var list = context.Resolve(addRange.GetParameters()[0].ParameterType);
+        var im = t.GetField("Empty", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static).GetValue(null);
+
+        return addRange.Invoke(im, new[] { list });
+      }
+      else if (args.Length == 2 && t.GetGenericTypeDefinition().FullName.StartsWith("System.Collections.Immutable.ImmutableDictionary"))
+      {
+        var addRange =
+          t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+          .Where(m => m.Name == "AddRange" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType.FullName.StartsWith("System.Collections.Generic.IEnumerable"))
+          .FirstOrDefault();
+
+        var dictType = typeof(Dictionary<,>).MakeGenericType(args);
+        var dict = context.Resolve(dictType);
+
+        var emptyDict = t.GetField("Empty", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static).GetValue(null);
+        return addRange.Invoke(emptyDict, new[] { dict });
+      }
+      else
       {
         return new AutoFixture.Kernel.NoSpecimen();
       }
-
-      var addRange =
-        t.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-        .Where(m => m.Name == "AddRange" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType.FullName.StartsWith("System.Collections.Generic.IEnumerable"))
-        .FirstOrDefault();
-
-      var list = context.Resolve(addRange.GetParameters()[0].ParameterType);
-      var im = t.GetField("Empty", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static).GetValue(null);
-
-      return addRange.Invoke(im, new[] { list });
     }
   }
 }

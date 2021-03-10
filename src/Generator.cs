@@ -129,21 +129,14 @@ namespace Germinate.Generator
         output.AppendLine("    foreach (var a in check.Checks) a();");
         output.AppendLine($"    return draft.{Names.FinishMethod}();");
         output.AppendLine("  }");
+
+        ImmutableAdjustAll.EmitAdjustAll(rds, output);
+
         output.AppendLine("}}"); // close Producer and namespace
 
         context.AddSource(rds.RecordName + ".Draftable.g.cs", output.ToString());
       }
     }
-
-    private static IReadOnlyList<string> _immutableCollections =
-      new[] {
-        "global::System.Collections.Immutable.ImmutableArray",
-        "global::System.Collections.Immutable.ImmutableDictionary",
-        "global::System.Collections.Immutable.ImmutableHashSet",
-        "global::System.Collections.Immutable.ImmutableList",
-        "global::System.Collections.Immutable.ImmutableSortedDictionary",
-        "global::System.Collections.Immutable.ImmutableSortedSet",
-      };
 
     private void EmitProperties(EmitPhase phase, DraftableRecord rds, StringBuilder output)
     {
@@ -153,7 +146,7 @@ namespace Germinate.Generator
         {
           PropDraftable.Emit(phase, rds, prop, output);
         }
-        else if (_immutableCollections.Any(t => prop.FullTypeName.StartsWith(t)))
+        else if (prop.IsImmutableCollection)
         {
           PropImmutableCollection.Emit(phase, prop, output);
         }

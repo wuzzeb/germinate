@@ -57,7 +57,15 @@ namespace Germinate.Generator
           output.AppendLine("      get");
           output.AppendLine("      {");
           output.AppendLine($"        if ({builderProp} == null) {{");
-          output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullTypeName}.Empty).ToBuilder();");
+          if (prop.FullTypeName.StartsWith("global::System.Collections.Immutable.ImmutableArray"))
+          {
+            // ImmutableArray is a struct and need to use IsDefault to check null
+            output.AppendLine($"          {builderProp} = {imProp}.IsDefault ? {prop.FullTypeName}.Empty.ToBuilder() : {imProp}.ToBuilder();");
+          }
+          else
+          {
+            output.AppendLine($"          {builderProp} = ({imProp} ?? {prop.FullTypeName}.Empty).ToBuilder();");
+          }
           output.AppendLine($"          {Names.AddCheckDirtyMethod}(() => {{");
           output.AppendLine($"            var newVal = {builderProp}.ToImmutable();");
           output.AppendLine($"            if (!object.ReferenceEquals(newVal, {imProp})) {{");
