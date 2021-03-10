@@ -10,11 +10,7 @@
     <Product>Germinate</Product>
     <Copyright>John Lenz</Copyright>
     <Authors>John Lenz</Authors>
-    <Description>
-      Germinate allows you to work with immutable records in a more convenient way, based on a copy-on-write mechanisim.
-      You apply arbitrary changes to temporary draft state and when all your mutations are complete, Germinate produces
-      a new immutable record.
-    </Description>
+    <Description>Germinate allows you to work with immutable records in a more convenient way, based on a copy-on-write mechanisim.You apply arbitrary changes to temporary draft state and when all your mutations are complete, Germinate produces a new immutable record.</Description>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/wuzzeb/germinate</PackageProjectUrl>

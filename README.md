@@ -158,6 +158,13 @@ Germinate will also create a static extension method
 the assembly, something like `Producer_<assemblyName>`. There is a single static class which contains
 all the `Produce` extension methods.
 
+For each draftable record used inside an immutable collection, Germinte will create a static extension method
+`AdjustAll` which takes the immutable collection builder and an action to update the draft. A method is
+generated for each immutable collection builder (`ImmutableList<V>.Builder`, `ImmutableDictionary<K,V>.Builder`, etc.)
+for which the value is a draftable record. The `AdjustAll` extension method calls `Produce` on each
+value in the immutable collection and sets the result back into the immutable collection builder.
+See the [collections documentation](#collections) for more details.
+
 Finally, Germinate generates the implementation of the draftable interfaces inside the
 `Germinate.Internal` namespace. These classes are public so that if Germinte is used in multiple
 assemblies, Germinate can generate references to the drafts of records in dependent assemblies. These
@@ -243,6 +250,54 @@ var moreEvens = evens.Produce(draft => {
 will initialize the builder with the contents of `evens.Numbers`. At the end of the `Produce` function, Germinate calls the
 [ToImmutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable.immutablelist-1.builder.toimmutable)
 method to convert the builder to a new immutable list to be contained in `moreEvens`.
+
+If the value inside an immutable collection is itself draftable, Germinate will generate extension methods `AdjustAll`
+in the `Germinate` namespace.
+
+```csharp
+public static void AdjustAll(this ImmutableArray<Weather>.Builder b, Action<IWeatherDraft> f);
+public static void AdjustAll(this ImmutableArray<Weather>.Builder b, Action<IWeatherDraft, int> f);
+public static void AdjustAll(this ImmutableList<Weather>.Builder b, Action<IWeatherDraft> f);
+public static void AdjustAll(this ImmutableList<Weather>.Builder b, Action<IWeatherDraft, int> f);
+public static void AdjustAll(this ImmutableHashSet<Weather>.Builder b, Action<IWeatherDraft> f);
+public static void AdjustAll(this ImmutableSortedSet<Weather>.Builder b, Action<IWeatherDraft> f);
+public static void AdjustAll(this ImmutableSortedSet<Weather>.Builder b, Action<IWeatherDraft, int> f);
+public static void AdjustAll<Key>(this ImmutableDictionary<Key, Weather>.Builder b, Action<Key, IWeatherDraft> f);
+public static void AdjustAll<Key>(this ImmutableSortedDictionary<Key, Weather>.Builder b, Action<Key, IWeatherDraft> f);
+```
+
+From among the above list, Germinate only generates `AdjustAll` methods where the builder actually appears inside
+a draftable record. The `AdjustAll` method calls `Produce` on each element in the collection, possibly also passing
+the index as an integer or the key for the dictionaries to the adjustment function.
+
+For example,
+
+```csharp
+[Draftable]
+public record Country {
+  public ImmutableDictionary<string, City> Cities {get; init;}
+}
+```
+
+would cause Germinate to emit (in the `Germinate` namespace)
+
+```csharp
+public static void AdjustAll<Key>(this ImmutableDictionary<Key, City>.Builder b, Action<Key, ICityDraft> f);
+```
+
+which could then be used as
+
+```csharp
+var country = new Country() { .... };
+var newCountry = country.Produce(countryDraft => {
+  countryDraft.Cities.AdjustAll((cityKey, cityDraft) => {
+    cityDraft.Weather.TemperatureC += 4;
+  });
+});
+```
+
+Note how `countryDraft.Cities` has type `ImmutableDictionary<string, City>.Builder` and so the `AdjustAll` extension
+method can be called on it.
 
 ### IReadOnlyList and IReadOnlyDictionary
 
