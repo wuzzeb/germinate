@@ -208,31 +208,13 @@ namespace Germinate {
 ## Collections
 
 When working with immutable records, they should only contain only immutable data consiting of base types, other
-immutable records, or immutable collections. There are two possibilities for immutable collections: `IReadOnlyList`/
-`IReadOnlyDictionary` or
+immutable records, or immutable collections. There are two possibilities:
 [System.Collections.Immutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable)
-([NuGet](https://www.nuget.org/packages/System.Collections.Immutable)). I suggest both approaches depending on needs.
+([NuGet](https://www.nuget.org/packages/System.Collections.Immutable)) or just using `IReadOnlyList`/
+`IReadOnlyDictionary`.
 
-Use `IEnumerable`, `IReadOnlyList`, and `IReadOnlyDictionary` for collections which rarely or never change, or if they do change they are completly updated.
-Since these are normal non-draftable properties, Germinate translates them to a getter and a setter in the draft interface.
-You can then create a new read only list or dictionary using LINQ. For example,
-
-```csharp
-[Draftable] public record SomeNumbers {
-  IReadOnlyList<int> Numbers { get; init; }
-}
-```
-
-can be used as
-
-```csharp
-var evens = new SomeNumbers() { Numbers = new[] {2, 4, 6, 8}};
-var odds = evens.Produce(d => d.Numbers = d.Numbers.Select(i => i + 1).ToArray());
-```
-
-Alternatively, if you are going to be updating, adding, or deleting elements frequently to the list or dictionary, consider
-Microsoft's library [System.Collections.Immutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable)
-([NuGet](https://www.nuget.org/packages/System.Collections.Immutable)).
+The prefered approach to collections is the [System.Collections.Immutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable)
+([NuGet](https://www.nuget.org/packages/System.Collections.Immutable)) library.
 
 ```csharp
 [Draftable]
@@ -261,6 +243,36 @@ var moreEvens = evens.Produce(draft => {
 will initialize the builder with the contents of `evens.Numbers`. At the end of the `Produce` function, Germinate calls the
 [ToImmutable](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable.immutablelist-1.builder.toimmutable)
 method to convert the builder to a new immutable list to be contained in `moreEvens`.
+
+### IReadOnlyList and IReadOnlyDictionary
+
+If you don't want to use the immutable collections package, you can consider using
+`IReadOnlyList` and `IReadOnlyDictionary` directly in the record. Since these are normal non-draftable properties,
+Germinate translates them to a getter and a setter in the draft interface. You can then create a new read only list or
+dictionary using LINQ. For example,
+
+```csharp
+[Draftable] public record SomeNumbers {
+  IReadOnlyList<int> Numbers { get; init; }
+}
+```
+
+can be used as
+
+```csharp
+var evens = new SomeNumbers() { Numbers = new[] {2, 4, 6, 8}};
+var odds = evens.Produce(d => d.Numbers = d.Numbers.Select(i => i + 1).ToArray());
+```
+
+Care must be taken because while the record itself has type `IReadOnlyList`, there is nothing preventing the initialing code from
+keeping a reference to the mutable collection. I initially used `IReadOnlyList` but had a hard to track down bug due to this.
+In an existing codebase, we introduced some immutable records but still had some existing normal mutable classes. One of those classes
+contained a property of a mutable `System.Collections.Generic.List`. This list was copied into a record with a property of type
+`IReadOnlyList` so anything accessing the record couldn't change the list. But of course the list was also referenced from the
+mutable class and was mutated there, causing a bug because code using the record expected the list to be unchanged. This could have
+been mitigated by copying the list using the LINQ `ToArray()` or `ToList()` at the time the record is created so the record gets its
+own copy, but there is nothing to enforce this restriction. Due to this, I converted all the immutable records in our project to use
+immutable collections.
 
 ## Operator Overload
 
