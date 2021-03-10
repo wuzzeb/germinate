@@ -61,7 +61,7 @@ namespace Germinate.Generator
       // Check if Draftable attribute defined in a dependency of this assembly
       if (context.Compilation.GetTypeByMetadataName("Germinate.DraftableAttribute") == null)
       {
-        context.AddSource("DraftableBase.cs", DraftableBase);
+        context.AddSource("DraftableBase.g.cs", DraftableBase);
       }
 
       foreach (var rds in records.Values.Where(r => r.Emit))
@@ -131,7 +131,7 @@ namespace Germinate.Generator
         output.AppendLine("  }");
         output.AppendLine("}}"); // close Producer and namespace
 
-        context.AddSource(rds.RecordName + ".Draftable.cs", output.ToString());
+        context.AddSource(rds.RecordName + ".Draftable.g.cs", output.ToString());
       }
     }
 
