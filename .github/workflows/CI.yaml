@@ -8,10 +8,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: "5.0.x"
-
       - run: dotnet build src
       - run: dotnet test test
       - run: dotnet test test-dependency
